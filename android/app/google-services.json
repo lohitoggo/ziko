@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "798368449041",
+    "project_id": "ziko-d360e",
+    "storage_bucket": "ziko-d360e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:798368449041:android:95987707b8856ed1f9e7b0",
+        "android_client_info": {
+          "package_name": "com.ziko.ziko"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVBjm6_H5rArKcMEB-on819M9Eew9DjuM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
