@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'user_model.dart';
 
 class UserRepository {
@@ -26,6 +27,7 @@ class UserRepository {
     String? secondaryPhone,
     String? address,
     String? pinCode,
+    String? profileImageUrl,
   }) async {
     await _supabase.from('profiles').upsert({
       'id': uid,
@@ -35,7 +37,14 @@ class UserRepository {
       'secondary_phone': secondaryPhone,
       'address': address,
       'pin_code': pinCode,
+      'profile_image_url': profileImageUrl,
     });
+  }
+
+  Future<void> updateProfileImage(String uid, String imageUrl) async {
+    await _supabase.from('profiles').update({
+      'profile_image_url': imageUrl,
+    }).eq('id', uid);
   }
 
   Future<void> updateArea(String uid, String areaId) async {
@@ -57,13 +66,13 @@ class UserRepository {
         .from('profiles')
         .stream(primaryKey: ['id'])
         .eq('id', uid)
-        .map((data) {
+        .map<AppUser?>((data) {
           if (data.isEmpty) return null;
           final profile = data.first;
           return AppUser.fromMap({...profile, 'uid': profile['id']});
         })
         .handleError((error) {
-          print('Realtime error in watchUser: $error');
+          debugPrint('SUPABASE REALTIME ERROR (User): $error');
         });
   }
 }

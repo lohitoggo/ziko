@@ -163,7 +163,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                             padding: const EdgeInsets.only(top: 8),
                             child: Container(
                               padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                              decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                               child: Row(
                                 children: [
                                   const Icon(Icons.check_circle, color: Colors.green, size: 14),
@@ -182,13 +182,13 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                   // 2. AREA SELECTION (CRITICAL)
                   areasAsync.when(
                     data: (areas) => DropdownButtonFormField<String>(
-                      value: selectedAreaId,
+                      initialValue: selectedAreaId,
                       decoration: const InputDecoration(labelText: 'এলাকা নির্বাচন করুন *', prefixIcon: Icon(Icons.map_outlined)),
                       items: areas.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))).toList(),
                       onChanged: (v) => setLocalState(() => selectedAreaId = v),
                     ),
                     loading: () => const LinearProgressIndicator(),
-                    error: (_, __) => const Text('এলাকা লোড করা যায়নি'),
+                    error: (_, _) => const Text('এলাকা লোড করা যায়নি'),
                   ),
                   const SizedBox(height: 16),
 
@@ -276,13 +276,13 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.all(16),
             leading: Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: const Icon(Icons.home_rounded, color: AppColors.primary, size: 20),
             ),
             title: Row(
@@ -290,14 +290,14 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                 Expanded(child: Text(a.village, style: GoogleFonts.urbanist(fontWeight: FontWeight.bold, fontSize: 15))),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                  decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                   child: Text(areaName, style: const TextStyle(color: Colors.blue, fontSize: 9, fontWeight: FontWeight.bold)),
                 ),
                 if (a.isDefault)
                   Container(
                     margin: const EdgeInsets.only(left: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                    decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                     child: const Text('DEFAULT', style: TextStyle(color: Colors.green, fontSize: 8, fontWeight: FontWeight.bold)),
                   ),
               ],

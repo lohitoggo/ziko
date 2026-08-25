@@ -7,15 +7,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../data/business_model.dart';
 import '../data/food_item_model.dart';
 import '../providers/business_provider.dart';
-import '../providers/food_item_provider.dart';
 import '../providers/cart_provider.dart';
-import '../providers/wishlist_provider.dart';
-import '../providers/recently_viewed_provider.dart';
-import '../../rider/providers/rider_provider.dart';
-import '../../auth/providers/supabase_auth_provider.dart';
 import '../../auth/providers/user_provider.dart';
 import '../../auth/providers/area_provider.dart';
-import '../../auth/data/area_model.dart';
 import '../../admin/providers/admin_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import 'business_details_screen.dart';
@@ -81,7 +75,7 @@ class CustomerHomeScreen extends ConsumerWidget {
                                   skipLoadingOnReload: true,
                                   data: (user) => Text(user?.name ?? 'Guest User', style: GoogleFonts.sora(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
                                   loading: () => Container(width: 100, height: 20, color: Colors.white24),
-                                  error: (_, __) => const Text('Welcome!'),
+                                  error: (_, _) => const Text('Welcome!'),
                                 ),
                               ],
                             ),
@@ -109,10 +103,10 @@ class CustomerHomeScreen extends ConsumerWidget {
                                   return Text('${area.name}•${area.estimatedDeliveryMinutes} mins', style: GoogleFonts.sora(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600));
                                 },
                                 loading: () => const Text('...', style: TextStyle(color: Colors.white)),
-                                error: (_, __) => const Text('Select Area', style: TextStyle(color: Colors.white)),
+                                error: (_, _) => const Text('Select Area', style: TextStyle(color: Colors.white)),
                               ),
                               loading: () => const SizedBox(),
-                              error: (_, __) => const SizedBox(),
+                              error: (_, _) => const SizedBox(),
                             ),
                           ),
                         ],
@@ -141,17 +135,28 @@ class CustomerHomeScreen extends ConsumerWidget {
 
                 settingsAsync.when(
                   skipLoadingOnReload: true,
+                  skipLoadingOnRefresh: true,
                   data: (settings) => _PremiumBannerCarousel(bannerUrls: List<String>.from(settings?['banner_urls'] ?? [])),
                   loading: () => const SizedBox(height: 160),
-                  error: (_, __) => const SizedBox(),
+                  error: (error, stack) {
+                    // If we have previous data, keep showing it. 
+                    // AsyncValue handles this if skipLoadingOnReload is true.
+                    return const SizedBox.shrink(); 
+                  },
                 ),
 
                 const _QuickActionsSection(),
 
                 businessesAsync.when(
                   skipLoadingOnReload: true,
+                  skipLoadingOnRefresh: true,
                   loading: () => Column(children: List.generate(3, (index) => const _BusinessCardShimmer())),
-                  error: (e, _) => Center(child: Text('Error: $e')),
+                  error: (e, _) => Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text('Offline: Showing last loaded shops', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                    ),
+                  ),
                   data: (shops) {
                     if (shops.isEmpty) return const Center(child: Padding(padding: EdgeInsets.all(40), child: Text('No shops found')));
 
@@ -263,7 +268,7 @@ class _HorizontalShopList extends ConsumerWidget {
               return _TrendingShopCard(business: b, deliveryTime: area.estimatedDeliveryMinutes.toString());
             },
             loading: () => _TrendingShopCard(business: b, deliveryTime: '...'),
-            error: (_, __) => _TrendingShopCard(business: b, deliveryTime: '30'),
+            error: (_, _) => _TrendingShopCard(business: b, deliveryTime: '30'),
           );
         },
       ),
@@ -292,7 +297,7 @@ class _RecommendedItemsList extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 }
@@ -451,7 +456,7 @@ class _QuickActionsSection extends StatelessWidget {
 
 class BusinessCard extends StatelessWidget {
   final BusinessModel business;
-  const BusinessCard({required this.business});
+  const BusinessCard({super.key, required this.business});
   @override
   Widget build(BuildContext context) {
     final b = business;
@@ -508,7 +513,7 @@ class _TrendingShopCard extends StatelessWidget {
 }
 
 class _BusinessCardShimmer extends StatelessWidget {
-  const _BusinessCardShimmer({super.key});
+  const _BusinessCardShimmer();
   @override
   Widget build(BuildContext context) {
     return Container(

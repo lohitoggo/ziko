@@ -41,7 +41,7 @@ final availableOrdersProvider = StreamProvider<List<Map<String, dynamic>>>((ref)
       return ref.watch(riderRepositoryProvider).watchAvailableOrders(areaIds);
     },
     loading: () => Stream.value([]),
-    error: (_, __) => Stream.value([]),
+    error: (_, _) => Stream.value([]),
   );
 });
 

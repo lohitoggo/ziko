@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/restaurant_owner_provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/notifications/call_notification_service.dart';
 
 class BusinessDashboardTab extends ConsumerWidget {
   final String restaurantId;
@@ -104,7 +103,7 @@ class BusinessDashboardTab extends ConsumerWidget {
                               ),
                             ),
                             loading: () => const _StatCardPlaceholder(),
-                            error: (_, __) => const _StatCardPlaceholder(),
+                            error: (_, _) => const _StatCardPlaceholder(),
                           ),
                         ),
                       ],

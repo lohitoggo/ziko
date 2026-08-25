@@ -7,7 +7,6 @@ import '../../admin/providers/admin_provider.dart';
 import 'email_login_screen.dart';
 import 'onboarding_screen.dart';
 import 'role_selection_screen.dart';
-import 'area_selection_screen.dart';
 import 'calling_readiness_screen.dart';
 import '../../customer/presentation/customer_main_shell.dart';
 import '../../restaurant/presentation/restaurant_home_screen.dart';
@@ -48,9 +47,10 @@ class AuthWrapper extends ConsumerWidget {
               final userAsync = ref.watch(currentUserProvider);
               return userAsync.when(
                 skipLoadingOnReload: true,
+                skipLoadingOnRefresh: true,
                 data: (appUser) => (appUser?.role == 'admin') ? _buildMainUI(ref) : MaintenanceScreen(message: announcement),
                 loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-                error: (_, __) => MaintenanceScreen(message: announcement),
+                error: (_, _) => MaintenanceScreen(message: announcement),
               );
             }
 

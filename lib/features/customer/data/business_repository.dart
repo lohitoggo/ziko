@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'business_model.dart';
 import 'food_item_model.dart';
 
@@ -10,9 +10,12 @@ class BusinessRepository {
     return _supabase
         .from('active_items_view')
         .stream(primaryKey: ['id'])
-        .map((data) {
-          if (data.isEmpty) return [];
+        .map<List<FoodItemModel>>((data) {
+          if (data.isEmpty) return <FoodItemModel>[];
           return data.map((d) => FoodItemModel.fromMap(d['id'], d)).toList();
+        })
+        .handleError((e) {
+          debugPrint('REALTIME ERROR (Recommended): $e');
         });
   }
 
@@ -52,8 +55,7 @@ class BusinessRepository {
           return allShops;
         })
         .handleError((error) {
-          print('CRITICAL: Supabase Global Feed Error: $error');
-          return <BusinessModel>[];
+          debugPrint('CRITICAL: Supabase Global Feed Error: $error');
         });
   }
 
@@ -74,6 +76,9 @@ class BusinessRepository {
         .from('businesses')
         .stream(primaryKey: ['id'])
         .eq('id', businessId)
-        .map((data) => data.isEmpty ? null : BusinessModel.fromMap(data.first['id'], data.first));
+        .map<BusinessModel?>((data) => data.isEmpty ? null : BusinessModel.fromMap(data.first['id'], data.first))
+        .handleError((e) {
+          debugPrint('REALTIME ERROR (Single Business): $e');
+        });
   }
 }

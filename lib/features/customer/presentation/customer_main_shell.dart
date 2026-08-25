@@ -5,7 +5,6 @@ import 'customer_home_screen.dart';
 import 'order_history_screen.dart';
 import 'wishlist_screen.dart';
 import 'account_screen.dart';
-import '../../../core/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 final customerTabControllerProvider = StateProvider<int>((ref) => 0);

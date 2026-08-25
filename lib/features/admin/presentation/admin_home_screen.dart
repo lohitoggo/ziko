@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/supabase_auth_provider.dart';
 import '../../auth/presentation/auth_wrapper.dart';
-import '../providers/admin_provider.dart';
 import 'admin_areas_tab.dart';
 import 'admin_shops_tab.dart';
 import 'admin_orders_tab.dart';

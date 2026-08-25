@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/order_repository.dart';
 import '../../auth/providers/user_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
   return OrderRepository();
@@ -17,8 +18,7 @@ StreamProvider<List<Map<String, dynamic>>>((ref) {
   return ref.watch(orderRepositoryProvider)
       .watchCustomerOrders(uid)
       .handleError((e) {
-        print('SUPABASE ORDER ERROR: $e');
-        return <Map<String, dynamic>>[]; // Silent fallback
+        debugPrint('SUPABASE ORDER REALTIME ERROR: $e');
       });
 });
 

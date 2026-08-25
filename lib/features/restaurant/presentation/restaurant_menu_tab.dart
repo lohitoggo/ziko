@@ -530,7 +530,7 @@ class _RestaurantMenuTabState extends ConsumerState<RestaurantMenuTab> {
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: AppColors.primary.withOpacity(0.1))),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: AppColors.primary.withValues(alpha: 0.1))),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -699,9 +699,9 @@ class _RestaurantMenuTabState extends ConsumerState<RestaurantMenuTab> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: isBooked ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.05),
+                            color: isBooked ? Colors.red.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: isBooked ? Colors.red.withOpacity(0.3) : Colors.green.withOpacity(0.2)),
+                            border: Border.all(color: isBooked ? Colors.red.withValues(alpha: 0.3) : Colors.green.withValues(alpha: 0.2)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,

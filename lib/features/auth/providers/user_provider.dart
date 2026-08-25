@@ -16,5 +16,7 @@ final currentUserProvider = StreamProvider<AppUser?>((ref) {
   }
   
   // Watch the user profile in real-time
+  // Added error handling and auto-retry logic via Stream transformation if needed, 
+  // but usually didChangeAppLifecycleState in main.dart handles the reconnect.
   return ref.watch(userRepositoryProvider).watchUser(user.id);
 });

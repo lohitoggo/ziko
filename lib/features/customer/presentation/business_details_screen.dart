@@ -177,10 +177,10 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
                                 );
                               },
                               loading: () => const Text('...'),
-                              error: (_, __) => const Text('Error'),
+                              error: (_, _) => const Text('Error'),
                             ),
                             loading: () => const Text('...'),
-                            error: (_, __) => const Text('Error'),
+                            error: (_, _) => const Text('Error'),
                           ),
                         ],
                       ),
@@ -254,11 +254,13 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
                   );
                 },
                 loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-                error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+                error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
               ),
 
               // 5. Menu Items List
               itemsAsync.when(
+                skipLoadingOnReload: true,
+                skipLoadingOnRefresh: true,
                 data: (items) {
                   final filteredItems = items.where((item) {
                     final matchesSearch = item.name.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -296,7 +298,18 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
                   );
                 },
                 loading: () => const SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
-                error: (e, _) => SliverFillRemaining(child: Center(child: Text('Error: $e'))),
+                error: (e, _) => SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.cloud_off_rounded, size: 40, color: Colors.grey),
+                        const SizedBox(height: 8),
+                        Text('Working Offline', style: TextStyle(color: Colors.grey.shade600)),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

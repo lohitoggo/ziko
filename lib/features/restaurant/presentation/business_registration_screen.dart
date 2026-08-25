@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../providers/restaurant_owner_provider.dart';
-import '../../auth/providers/supabase_auth_provider.dart';
 import '../../auth/providers/user_provider.dart';
 import '../../auth/presentation/auth_wrapper.dart';
 import '../../auth/providers/area_provider.dart';
@@ -253,7 +252,7 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
             TextField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'দোকানের নাম *')),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _category,
+              initialValue: _category,
               items: const [
                 DropdownMenuItem(value: 'restaurant', child: Text('রেস্টুরেন্ট')),
                 DropdownMenuItem(value: 'salon', child: Text('সেলুন')),
@@ -275,7 +274,7 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
                     Switch(
                       value: _hasDoubleShift,
                       onChanged: (v) => setState(() => _hasDoubleShift = v),
-                      activeColor: AppColors.primary,
+                      activeThumbColor: AppColors.primary,
                     ),
                   ],
                 ),
@@ -358,7 +357,7 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
             ],
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _offDay,
+              initialValue: _offDay,
               items: ['None', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
                   .map((d) => DropdownMenuItem(value: d, child: Text(d == 'None' ? 'কোনো ছুটি নেই' : d))).toList(),
               onChanged: (v) => setState(() => _offDay = v!),

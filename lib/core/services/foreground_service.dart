@@ -1,4 +1,3 @@
-import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
@@ -9,18 +8,20 @@ void startCallback() {
 
 class MyTaskHandler extends TaskHandler {
   @override
-  void onStart(DateTime timestamp, SendPort? sendPort) {
+  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     // Task started
+    debugPrint('MyTaskHandler.onStart() started by $starter');
   }
 
   @override
-  void onRepeatEvent(DateTime timestamp, SendPort? sendPort) {
+  void onRepeatEvent(DateTime timestamp) {
     // Keep alive tick
   }
 
   @override
-  void onDestroy(DateTime timestamp, SendPort? sendPort) {
+  Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
     // Task destroyed
+    debugPrint('MyTaskHandler.onDestroy(isTimeout: $isTimeout)');
   }
 }
 
@@ -36,29 +37,16 @@ class ForegroundService {
         channelId: 'foreground_service',
         channelName: 'Critical Order Monitoring',
         channelDescription: 'Maintains 100% reliability for new order calls',
-        // Explicit small icon - missing/invalid icon is a common cause of
-        // "Bad notification for startForeground" crashes on some OEM skins
-        // (Realme/ColorOS included).
-        iconData: const NotificationIconData(
-          resType: ResourceType.mipmap,
-          resPrefix: ResourcePrefix.ic,
-          name: 'launcher',
-        ),
-        // MAX/HIGH made this a heads-up alert competing with the actual
-        // call UI, which is likely part of what triggered the crash on
-        // return from the CallkitIncomingActivity. This is just a silent
-        // "keep alive" notification, so it doesn't need to be loud.
+        // channelImportance/priority moved to LOW for non-intrusive reliability
         channelImportance: NotificationChannelImportance.LOW,
         priority: NotificationPriority.LOW,
-        isSticky: true,
       ),
       iosNotificationOptions: const IOSNotificationOptions(
         showNotification: true,
         playSound: false,
       ),
-      foregroundTaskOptions: const ForegroundTaskOptions(
-        interval: 5000,
-        isOnceEvent: false,
+      foregroundTaskOptions: ForegroundTaskOptions(
+        eventAction: ForegroundTaskEventAction.repeat(5000),
         autoRunOnBoot: true,
         allowWakeLock: true,
         allowWifiLock: true,
@@ -67,17 +55,27 @@ class ForegroundService {
   }
 
   static Future<void> start() async {
-    // Guard against re-entrant/racy calls (e.g. widget re-mounting right
-    // after returning from the native CallkitIncomingActivity).
     if (_starting) return;
     _starting = true;
     try {
       if (await FlutterForegroundTask.isRunningService) return;
-      await FlutterForegroundTask.startService(
+      
+      // Explicitly request notification permission for Android 13+
+      await FlutterForegroundTask.requestNotificationPermission();
+
+      final result = await FlutterForegroundTask.startService(
+        serviceId: 101, // Explicit service ID
         notificationTitle: 'ziko super app',
         notificationText: 'Ready for new orders',
+        notificationIcon: null,
         callback: startCallback,
       );
+      
+      if (result is ServiceRequestSuccess) {
+        debugPrint('ForegroundService started successfully');
+      } else if (result is ServiceRequestFailure) {
+        debugPrint('ForegroundService failed to start: ${result.error}');
+      }
     } catch (e) {
       debugPrint('ForegroundService.start() failed: $e');
     } finally {

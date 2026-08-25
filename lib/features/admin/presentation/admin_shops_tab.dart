@@ -74,7 +74,7 @@ class AdminShopsTab extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: category,
+                          initialValue: category,
                           items: const [
                             DropdownMenuItem(value: 'restaurant', child: Text('রেস্টুরেন্ট')),
                             DropdownMenuItem(value: 'salon', child: Text('সেলুন')),
@@ -125,7 +125,7 @@ class AdminShopsTab extends ConsumerWidget {
                       ),
                     ),
                     loading: () => const LinearProgressIndicator(),
-                    error: (_, __) => const Text('এলাকা লোড করা যায়নি'),
+                    error: (_, _) => const Text('এলাকা লোড করা যায়নি'),
                   ),
                   
                   const SizedBox(height: 12),
@@ -162,7 +162,7 @@ class AdminShopsTab extends ConsumerWidget {
                             'commission_rate': double.tryParse(commissionCtrl.text) ?? 10.0,
                             'upi_id': upiCtrl.text.trim(),
                             'license_no': licenseCtrl.text.trim(),
-                            if (logoUrl != null) 'logo_url': logoUrl,
+                            'logo_url': ?logoUrl,
                           };
 
                           if (existingShop == null) {

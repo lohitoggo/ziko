@@ -18,6 +18,7 @@ class $AssetsAssetsGen {
   final $AssetsAudioGen audio = const $AssetsAudioGen();
   final $AssetsImagesGen images = const $AssetsImagesGen();
   final $AssetsLottieGen lottie = const $AssetsLottieGen();
+  final $AssetsMapIconsGen mapIcons = const $AssetsMapIconsGen();
 }
 
 class $AssetsImagesGen {
@@ -25,6 +26,16 @@ class $AssetsImagesGen {
 
   final AssetGenImage appIcon = const AssetGenImage(
     'assets/images/app_icon.png',
+  );
+}
+
+class $AssetsMapIconsGen {
+  const $AssetsMapIconsGen();
+
+  final AssetGenImage home = const AssetGenImage('assets/map_icons/home.png');
+  final AssetGenImage rider = const AssetGenImage('assets/map_icons/rider.png');
+  final AssetGenImage shopMarker = const AssetGenImage(
+    'assets/map_icons/shop_marker.png',
   );
 }
 

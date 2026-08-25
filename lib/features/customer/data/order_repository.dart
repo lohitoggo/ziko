@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/cart_item_model.dart';
 import '../../../core/notifications/notification_service.dart';
@@ -15,7 +16,10 @@ class OrderRepository {
         .stream(primaryKey: ['id'])
         .eq('customer_id', customerUid)
         .order('placed_at', ascending: false)
-        .map((data) => data.map((d) => {...d, 'orderId': d['id']}).toList());
+        .map<List<Map<String, dynamic>>>((data) => data.map((d) => {...d, 'orderId': d['id']}).toList())
+        .handleError((error) {
+          debugPrint('SUPABASE REALTIME ERROR (Orders): $error');
+        });
   }
 
   // =========================
@@ -26,7 +30,10 @@ class OrderRepository {
         .from('orders')
         .stream(primaryKey: ['id'])
         .eq('id', orderId)
-        .map((data) => data.isEmpty ? null : {...data.first, 'orderId': data.first['id']});
+        .map<Map<String, dynamic>?>((data) => data.isEmpty ? null : {...data.first, 'orderId': data.first['id']})
+        .handleError((error) {
+          debugPrint('SUPABASE REALTIME ERROR (Single Order): $error');
+        });
   }
 
   // =========================
@@ -38,6 +45,14 @@ class OrderRepository {
         .stream(primaryKey: ['id'])
         .eq('order_id', orderId)
         .map((data) => data);
+  }
+
+  Future<List<Map<String, dynamic>>> getOrderItems(String orderId) async {
+    final response = await _supabase
+        .from('order_items')
+        .select()
+        .eq('order_id', orderId);
+    return List<Map<String, dynamic>>.from(response);
   }
 
   // =========================

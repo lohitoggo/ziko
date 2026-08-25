@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'cashfree_service_impl.dart';
 import 'razorpay_service_impl.dart';
 
 /// Abstract class to define common payment operations.
@@ -17,8 +18,20 @@ abstract class PaymentService {
   void dispose();
 }
 
+enum PaymentGateway { razorpay, cashfree }
+
+PaymentService paymentServiceFor(PaymentGateway gateway) {
+  switch (gateway) {
+    case PaymentGateway.razorpay:
+      return RazorpayServiceImpl();
+    case PaymentGateway.cashfree:
+      return CashfreeServiceImpl();
+  }
+}
+
 /// Provider to access the active payment service.
-/// To switch to BulkPe in the future, just change 'RazorpayServiceImpl' to 'BulkPeServiceImpl'.
+/// The legacy provider continues to return Razorpay. New checkout flows should use
+/// [paymentServiceFor] so customers can select a gateway.
 final paymentServiceProvider = Provider<PaymentService>((ref) {
   return RazorpayServiceImpl();
 });

@@ -37,7 +37,7 @@ class AdminRidersTab extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: vehicleType,
+                        initialValue: vehicleType,
                         items: const [
                           DropdownMenuItem(value: 'bike', child: Text('মোটরসাইকেল')),
                           DropdownMenuItem(value: 'cycle', child: Text('সাইকেল')),
@@ -51,13 +51,13 @@ class AdminRidersTab extends ConsumerWidget {
                     Expanded(
                       child: areasAsync.when(
                         data: (areas) => DropdownButtonFormField<String>(
-                          value: selectedAreaId,
+                          initialValue: selectedAreaId,
                           items: areas.map((a) => DropdownMenuItem(value: a['areaId'] as String, child: Text(a['name']))).toList(),
                           onChanged: (val) => setModalState(() => selectedAreaId = val),
                           decoration: const InputDecoration(labelText: 'এলাকা'),
                         ),
                         loading: () => const LinearProgressIndicator(),
-                        error: (_, __) => const Text('Error'),
+                        error: (_, _) => const Text('Error'),
                       ),
                     ),
                   ],
@@ -180,7 +180,7 @@ class AdminRidersTab extends ConsumerWidget {
                               child: Switch(
                                 value: isActive,
                                 activeTrackColor: Colors.green.withValues(alpha: 0.2),
-                                activeColor: Colors.green,
+                                activeThumbColor: Colors.green,
                                 onChanged: (val) {
                                   ref.read(adminRepositoryProvider).blockUser(r['uid'], !val);
                                 },

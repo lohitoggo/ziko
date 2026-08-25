@@ -58,8 +58,12 @@
             android:name="com.onesignal.NotificationServiceExtension"
             android:value="com.ziko.ziko.NotificationServiceExtension" />
 
-        <!-- Keeps the app alive in the background so the order-alert push
-             notifications keep arriving reliably. -->
+        <!-- GOOGLE MAPS API KEY -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyCsHzJwEhs_BnFi-guwrSozlirJK5Rmft0" />
+
+        <!-- Keeps the app alive in the background -->
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
             android:exported="false"

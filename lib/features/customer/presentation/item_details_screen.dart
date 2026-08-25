@@ -6,14 +6,15 @@ import 'package:google_fonts/google_fonts.dart';
 import '../data/food_item_model.dart';
 import '../providers/cart_provider.dart';
 import '../providers/order_provider.dart';
-import '../../rider/providers/rider_provider.dart';
 import '../../auth/providers/user_provider.dart';
 import '../../auth/providers/area_provider.dart';
 import '../../auth/data/area_model.dart';
 import '../providers/booking_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import 'cart_screen.dart';
+import 'all_reviews_screen.dart';
 import '../providers/wishlist_provider.dart';
+import '../providers/business_provider.dart';
 import '../../auth/providers/supabase_auth_provider.dart';
 import 'package:intl/intl.dart';
 
@@ -579,7 +580,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                           boxShadow: isOccupiedByPreview ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.2), blurRadius: 8)] : null,
                         ),
                         child: Text(
-                          blockReason.isNotEmpty && !isSlotAvailable ? "$slot" : slot,
+                          blockReason.isNotEmpty && !isSlotAvailable ? slot : slot,
                           style: GoogleFonts.urbanist(
                             color: !isSlotAvailable ? Colors.grey.shade400 : (isOccupiedByPreview ? Colors.white : AppColors.charcoal),
                             fontWeight: FontWeight.bold, 
@@ -607,7 +608,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
         );
       },
       loading: () => const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 
@@ -654,50 +655,146 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
           );
         },
         loading: () => const SizedBox.shrink(),
-        error: (_, __) => const SizedBox.shrink(),
+        error: (_, _) => const SizedBox.shrink(),
       ),
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 
   Widget _reviewsSection() {
+    final reviewsAsync = ref.watch(itemReviewsProvider(widget.item.id));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Ratings & Reviews', style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w800)),
-            TextButton(onPressed: () {}, child: const Text('View All')),
+            Text('রিভিউ এবং রেটিং', style: GoogleFonts.hindSiliguri(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.charcoal)),
+            reviewsAsync.when(
+              data: (reviews) {
+                if (reviews.length <= 3) return Text('${reviews.length} টি রিভিউ', style: GoogleFonts.hindSiliguri(fontSize: 12, color: Colors.grey));
+                return TextButton(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => AllReviewsScreen(itemId: widget.item.id, itemName: widget.item.name)));
+                  },
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  child: Text('সব দেখুন', style: GoogleFonts.hindSiliguri(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.bold)),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
           ],
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Column(
+        reviewsAsync.when(
+          data: (reviews) {
+            if (reviews.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade100)),
+                child: Center(child: Text('এখনো কোনো রিভিউ নেই। প্রথম রিভিউটি আপনি দিন!', style: GoogleFonts.hindSiliguri(color: Colors.grey, fontSize: 13))),
+              );
+            }
+
+            final double avg = reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length;
+
+            return Column(
               children: [
-                Text(widget.item.avgRating.toString(), style: GoogleFonts.urbanist(fontSize: 32, fontWeight: FontWeight.w900)),
-                const Icon(Icons.star_rounded, color: AppColors.gold, size: 20),
-                const Text('Average', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                Row(
+                  children: [
+                    Column(
+                      children: [
+                        Text(avg.toStringAsFixed(1), style: GoogleFonts.urbanist(fontSize: 32, fontWeight: FontWeight.w900, color: AppColors.charcoal)),
+                        const Icon(Icons.star_rounded, color: AppColors.gold, size: 20),
+                        Text('গড় রেটিং', style: GoogleFonts.hindSiliguri(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(width: 30),
+                    Expanded(
+                      child: Column(
+                        children: List.generate(5, (index) {
+                          final star = 5 - index;
+                          final count = reviews.where((r) => r.rating.round() == star).length;
+                          return _ratingBar(star, count / reviews.length);
+                        }),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: reviews.length > 3 ? 3 : reviews.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) {
+                    final review = reviews[index];
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade100)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 15,
+                                backgroundColor: Colors.grey.shade100,
+                                backgroundImage: review.profileImageUrl != null 
+                                    ? CachedNetworkImageProvider(review.profileImageUrl!) 
+                                    : null,
+                                child: review.profileImageUrl == null 
+                                    ? Icon(Icons.person, size: 18, color: Colors.grey.shade400) 
+                                    : null,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(review.userName, style: GoogleFonts.hindSiliguri(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.charcoal)),
+                                    Text(DateFormat('dd MMM yyyy').format(review.timestamp), style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: List.generate(5, (i) => Icon(
+                              Icons.star_rounded, 
+                              size: 14, 
+                              color: i < review.rating.round() ? AppColors.gold : Colors.grey.shade100
+                            )),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(review.comment, style: GoogleFonts.hindSiliguri(fontSize: 13, color: AppColors.muted, fontWeight: FontWeight.w500, height: 1.3)),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ],
-            ),
-            const SizedBox(width: 30),
-            Expanded(child: Column(children: List.generate(3, (i) => _ratingBar(3 - i)))),
-          ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Text('Error loading reviews: $err'),
         ),
       ],
     );
   }
 
-  Widget _ratingBar(int star) {
+  Widget _ratingBar(int star, double value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Text('$star', style: const TextStyle(fontSize: 10)),
+          Text('$star', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
           const SizedBox(width: 8),
-          Expanded(child: LinearProgressIndicator(value: star / 5, backgroundColor: Colors.grey.shade100, color: AppColors.softGreen, minHeight: 4, borderRadius: BorderRadius.circular(10))),
+          Expanded(child: LinearProgressIndicator(value: value, backgroundColor: Colors.grey.shade100, color: AppColors.softGreen, minHeight: 4, borderRadius: BorderRadius.circular(10))),
         ],
       ),
     );

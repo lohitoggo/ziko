@@ -116,7 +116,7 @@ class AdminCustomersTab extends ConsumerWidget {
                         height: 24,
                         child: Switch(
                           value: isActive,
-                          activeColor: Colors.green,
+                          activeThumbColor: Colors.green,
                           onChanged: (val) {
                             ref.read(adminRepositoryProvider).blockUser(c['uid'], !val);
                           },

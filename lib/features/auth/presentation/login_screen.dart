@@ -101,7 +101,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withOpacity(0.35),
+                          color: AppColors.primary.withValues(alpha: 0.35),
                           blurRadius: 24,
                           offset: const Offset(0, 10),
                         ),
@@ -189,7 +189,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       'নিবন্ধন করলে আপনি Ziko-র শর্তাবলীতে সম্মত হচ্ছেন',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: AppColors.muted.withOpacity(0.8),
+                          color: AppColors.muted.withValues(alpha: 0.8),
                           fontSize: 12),
                     ),
                   ),

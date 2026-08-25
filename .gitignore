@@ -46,3 +46,27 @@ app.*.map.json
 
 # Environment variables
 .env
+.env.*
+
+# Mappls configuration files
+*.a.conf
+*.a.olf
+
+# Android specific
+android/.gradle/
+android/.gradle_home/
+android/.android_home/
+android/app/build/
+android/build/
+.gradle/
+captures/
+*.hprof
+
+# Log files
+build_log*.txt
+dependencies*.txt
+build_output.txt
+build_run_output*.txt
+
+# Temporary files
+temp_project/

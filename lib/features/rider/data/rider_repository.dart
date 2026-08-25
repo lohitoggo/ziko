@@ -19,18 +19,16 @@ class RiderRepository {
         .map((data) => data.isEmpty ? false : (data.first['is_online'] ?? false));
   }
 
-  // যে অর্ডারগুলো "ready" অবস্থায় আছে এবং রাইডারের বাছাই করা এরিয়াগুলোর সাথে মেলে
   Stream<List<Map<String, dynamic>>> watchAvailableOrders(List<String> areaIds) {
     if (areaIds.isEmpty) return Stream.value([]);
     
     return _supabase
         .from('orders')
         .stream(primaryKey: ['id'])
-        .inFilter('area_id', areaIds) // Filter by all selected areas
+        .inFilter('area_id', areaIds)
         .map((data) => data.where((d) => d['status'] == 'ready' && (d['rider_id'] == null || d['rider_id'] == '')).map((d) => {...d, 'orderId': d['id']}).toList());
   }
 
-  // এই রাইডারকে assign করা অর্ডারগুলো
   Stream<List<Map<String, dynamic>>> watchMyDeliveries(String riderUid) {
     return _supabase
         .from('orders')
@@ -54,31 +52,51 @@ class RiderRepository {
       'status': 'rider_assigned',
     }).eq('id', orderId);
     
-    // Stop any existing call UI if accept was from within app
     CallNotificationService.stopCall();
   }
 
+  Future<void> resumeActiveTrackings(String riderUid) async {
+    final orders = await _supabase
+        .from('orders')
+        .select('id, status')
+        .eq('rider_id', riderUid)
+        .inFilter('status', ['picked_up', 'out_for_delivery']);
+
+    for (final order in orders) {
+      final orderId = order['id']?.toString();
+      if (orderId == null) continue;
+
+      if (!_trackingRepo.isTracking(orderId)) {
+        final started = await _trackingRepo.startTracking(orderId, riderUid);
+        print('Tracking resume for $orderId: $started');
+      }
+    }
+  }
+
   Future<void> updateDeliveryStatus(String orderId, String status) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    if (status == 'picked_up' || status == 'out_for_delivery') {
+      if (!_trackingRepo.isTracking(orderId)) {
+        final started = await _trackingRepo.startTracking(orderId, user.id);
+        if (!started) {
+          throw Exception('Location tracking could not be started. Please enable GPS and location permission.');
+        }
+      }
+    }
+
+    if (status == 'delivered' || status == 'cancelled') {
+      await _trackingRepo.stopTracking(orderId);
+    }
+
     final data = <String, dynamic>{'status': status};
-    if (status == 'picked_up') {
-      // Need picked_up_at column if tracking specifically
-    } else if (status == 'delivered') {
+    if (status == 'delivered') {
       data['delivered_at'] = DateTime.now().toIso8601String();
       data['payment_status'] = 'paid';
     }
     await _supabase.from('orders').update(data).eq('id', orderId);
 
-    // --- Manage Real-time Tracking based on status ---
-    if (status == 'picked_up') {
-      final user = _supabase.auth.currentUser;
-      if (user != null) {
-        _trackingRepo.startTracking(orderId, user.id);
-      }
-    } else if (status == 'delivered') {
-      _trackingRepo.stopTracking(orderId);
-    }
-
-    // --- Send Notification to Customer ---
     try {
       final orderDoc = await _supabase.from('orders').select('customer_id').eq('id', orderId).single();
       final customerId = orderDoc['customer_id'];
@@ -106,7 +124,6 @@ class RiderRepository {
   }
 
   Future<void> registerRider(Map<String, dynamic> data) async {
-    // Use ID for conflict resolution for more reliable profile updates
     await _supabase.from('riders').upsert(data, onConflict: 'id');
   }
 

@@ -62,6 +62,7 @@ class CategoryShopsScreen extends ConsumerWidget {
           Expanded(
             child: shopsAsync.when(
               skipLoadingOnReload: true,
+              skipLoadingOnRefresh: true,
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(
                 child: Column(
@@ -69,7 +70,7 @@ class CategoryShopsScreen extends ConsumerWidget {
                   children: [
                     const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.grey),
                     const SizedBox(height: 12),
-                    Text('Connecting...', style: GoogleFonts.urbanist(color: Colors.grey)),
+                    Text('Working Offline', style: GoogleFonts.urbanist(color: Colors.grey)),
                   ],
                 ),
               ),

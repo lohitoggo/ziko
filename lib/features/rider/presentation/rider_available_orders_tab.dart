@@ -83,7 +83,7 @@ class RiderAvailableOrdersTab extends ConsumerWidget {
                               businessAsync.when(
                                 data: (b) => Text(b?.name ?? 'দোকান', style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
                                 loading: () => const SizedBox(height: 12, width: 60, child: LinearProgressIndicator()),
-                                error: (_, __) => const Text('Error'),
+                                error: (_, _) => const Text('Error'),
                               ),
                             ],
                           ),

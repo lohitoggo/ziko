@@ -86,7 +86,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     Text(
                       '${cartNotifier.totalItems} items selected',
                       style: GoogleFonts.urbanist(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
@@ -179,14 +179,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                   );
                                 },
                                 loading: () => userAsync.hasValue ? const SizedBox.shrink() : const LinearProgressIndicator(),
-                                error: (_, __) => const Text('Error loading settings'),
+                                error: (_, _) => const Text('Error loading settings'),
                               );
                             },
                             loading: () => userAsync.hasValue ? const SizedBox.shrink() : const LinearProgressIndicator(),
-                            error: (_, __) => const Text('Error loading areas'),
+                            error: (_, _) => const Text('Error loading areas'),
                           ),
                           loading: () => const LinearProgressIndicator(),
-                          error: (_, __) => const Text('Error loading profile'),
+                          error: (_, _) => const Text('Error loading profile'),
                         ),
                         
                         const SizedBox(height: 40),
@@ -219,14 +219,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       return _buildCheckoutBar(context, grandTotal, showBookingSystem, cartNotifier.selectedSlot);
                     },
                     loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
+                    error: (_, _) => const SizedBox.shrink(),
                   );
                 },
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
               ),
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
     );
   }
@@ -246,7 +246,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,7 +298,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ),
           
           const SizedBox(height: 20),
-          Text('Select Time Slot (${totalDuration} min service)', style: GoogleFonts.urbanist(fontSize: 13, fontWeight: FontWeight.w700)),
+          Text('Select Time Slot ($totalDuration min service)', style: GoogleFonts.urbanist(fontSize: 13, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
 
           // Generated Slots Grid
@@ -402,10 +402,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.05),
+              color: AppColors.primary.withValues(alpha: 0.05),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.shopping_bag_outlined, size: 80, color: AppColors.primary.withOpacity(0.4)),
+            child: Icon(Icons.shopping_bag_outlined, size: 80, color: AppColors.primary.withValues(alpha: 0.4)),
           ),
           const SizedBox(height: 20),
           Text(
@@ -435,7 +435,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5)),
         ],
       ),
       child: Column(
@@ -497,7 +497,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -5)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5)),
         ],
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       ),
@@ -564,7 +564,7 @@ class _CartItemCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Row(
@@ -581,7 +581,7 @@ class _CartItemCard extends StatelessWidget {
                   )
                 : Container(
                     width: 65, height: 65,
-                    color: AppColors.primary.withOpacity(0.05),
+                    color: AppColors.primary.withValues(alpha: 0.05),
                     child: const Icon(Icons.fastfood_rounded, color: AppColors.primary, size: 28),
                   ),
           ),
@@ -616,7 +616,7 @@ class _CartItemCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(

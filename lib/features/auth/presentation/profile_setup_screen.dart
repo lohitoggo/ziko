@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/user_provider.dart';
-import '../data/user_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import 'area_selection_screen.dart';
 

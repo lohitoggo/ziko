@@ -216,7 +216,7 @@ class _BusinessProfileTabState extends ConsumerState<BusinessProfileTab> {
                 );
               },
               loading: () => const LinearProgressIndicator(),
-              error: (_, __) => const Text('এলাকা লোড করা যায়নি'),
+              error: (_, _) => const Text('এলাকা লোড করা যায়নি'),
             ),
             const SizedBox(height: 30),
 
@@ -241,7 +241,7 @@ class _BusinessProfileTabState extends ConsumerState<BusinessProfileTab> {
                     Switch(
                       value: _hasDoubleShift,
                       onChanged: (v) => setState(() => _hasDoubleShift = v),
-                      activeColor: AppColors.primary,
+                      activeThumbColor: AppColors.primary,
                     ),
                   ],
                 ),
@@ -325,7 +325,7 @@ class _BusinessProfileTabState extends ConsumerState<BusinessProfileTab> {
 
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _offDay,
+              initialValue: _offDay,
               items: ['None', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
                   .map((d) => DropdownMenuItem(value: d, child: Text(d == 'None' ? 'কোনো ছুটি নেই' : d))).toList(),
               onChanged: (v) => setState(() => _offDay = v!),

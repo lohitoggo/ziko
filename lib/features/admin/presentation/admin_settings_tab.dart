@@ -110,7 +110,7 @@ class _AdminSettingsTabState extends ConsumerState<AdminSettingsTab> {
                   subtitle: 'এটি চালু থাকলে রাইডারদের কাছে অটোমেটিক কল যাবে।',
                   trailing: Switch(
                     value: isAutoAssign,
-                    activeColor: AppColors.softGreen,
+                    activeThumbColor: AppColors.softGreen,
                     onChanged: (val) => ref.read(adminRepositoryProvider).updateSystemSettings({'is_auto_assign_enabled': val}),
                   ),
                 ),

@@ -127,7 +127,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: AppColors.gold.withOpacity(0.15),
+                  color: AppColors.gold.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: const Icon(Icons.sms_outlined,

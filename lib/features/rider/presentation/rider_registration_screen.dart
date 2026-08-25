@@ -4,7 +4,6 @@ import '../providers/rider_provider.dart';
 import '../../auth/providers/user_provider.dart';
 import '../../auth/presentation/auth_wrapper.dart';
 import '../../auth/providers/area_provider.dart';
-import '../../../core/theme/app_theme.dart';
 
 class RiderRegistrationScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? existingData;
@@ -113,7 +112,7 @@ class _RiderRegistrationScreenState extends ConsumerState<RiderRegistrationScree
             TextField(controller: _phoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'ফোন নম্বর *')),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _vehicleType,
+              initialValue: _vehicleType,
               items: const [
                 DropdownMenuItem(value: 'bike', child: Text('মোটরসাইকেল')),
                 DropdownMenuItem(value: 'cycle', child: Text('সাইকেল')),

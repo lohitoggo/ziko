@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'food_item_model.dart';
 
 class FoodItemRepository {
@@ -9,7 +10,8 @@ class FoodItemRepository {
         .from('items')
         .stream(primaryKey: ['id'])
         .eq('business_id', businessId)
-        .map((data) => data.map((d) => FoodItemModel.fromMap(d['id'], d)).toList());
+        .map<List<FoodItemModel>>((data) => data.map((d) => FoodItemModel.fromMap(d['id'], d)).toList())
+        .handleError((e) => debugPrint('REALTIME ERROR (Food Items): $e'));
   }
 
   Stream<List<FoodItemModel>> watchItemsByRestaurant(String businessId) {

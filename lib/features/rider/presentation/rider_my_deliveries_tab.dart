@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import '../providers/rider_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/location/location_service.dart';
 import '../../../core/location/navigation_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -60,10 +62,8 @@ class RiderMyDeliveriesTab extends ConsumerWidget {
     final lon = order['customer_lon'] as double?;
 
     if (lat != null && lon != null) {
-      // Professional way: Navigate using external Google Maps with Lat/Lon
       await NavigationService.launchExternalNavigation(lat, lon);
     } else {
-      // Legacy Fallback: Search using address string
       final address = order['address'] as String?;
       if (address == null || address.isEmpty) return;
       final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(address)}');
@@ -103,7 +103,6 @@ class RiderMyDeliveriesTab extends ConsumerWidget {
             final paymentStatus = order['payment_status'] ?? 'pending';
             final orderId = order['orderId'];
             final total = (order['total_amount'] ?? 0).toDouble();
-            final commission = (order['delivery_charge'] ?? 0).toDouble();
             final paymentMethod = order['payment_method'] ?? 'cod';
             final businessId = order['business_id'] ?? '';
             final customerUid = order['customer_id'] ?? '';
@@ -138,7 +137,7 @@ class RiderMyDeliveriesTab extends ConsumerWidget {
                             data: (b) => Text(b?.name ?? 'দোকান', 
                                 style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
                             loading: () => const SizedBox(height: 12, width: 60, child: LinearProgressIndicator()),
-                            error: (_, __) => const Text('Error'),
+                            error: (_, _) => const Text('Error'),
                           ),
                         ],
                       ),
@@ -148,54 +147,32 @@ class RiderMyDeliveriesTab extends ConsumerWidget {
                           color: AppColors.softGreen.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Text('₹${commission.toInt()}', 
-                            style: const TextStyle(color: AppColors.softGreen, fontWeight: FontWeight.bold, fontSize: 16)),
+                        child: Text(
+                          _statusLabel(status),
+                          style: TextStyle(color: AppColors.softGreen, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ],
                   ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.location_on, size: 14, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(order['address'] ?? 'লোকেশন পাওয়া যায়নি', 
-                              style: const TextStyle(color: Colors.grey, fontSize: 12), overflow: TextOverflow.ellipsis),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(_statusLabel(status), 
-                              style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                  ),
                   children: [
                     const Divider(height: 1),
-                    
-                    // Business Info
+                    // Pickup Info (Restaurant)
                     businessAsync.when(
                       data: (b) => _ContactCard(
                         title: 'দোকান (Pickup)',
-                        name: b?.name ?? 'অজানা দোকান',
+                        name: b?.name ?? 'দোকান',
                         address: b?.address ?? 'ঠিকানা পাওয়া যায়নি',
-                        onCall: () => _makeCall(null), // Need shop phone in model
+                        onCall: () => _makeCall(b?.ownerPhone),
                         onMap: () => _openMap({'address': b?.address}),
                         icon: Icons.storefront,
                       ),
                       loading: () => const Padding(padding: EdgeInsets.all(16), child: LinearProgressIndicator()),
-                      error: (_, __) => const Padding(padding: EdgeInsets.all(16), child: Text('দোকান তথ্য লোড করা যায়নি')),
+                      error: (_, _) => const Padding(padding: EdgeInsets.all(16), child: Text('দোকান তথ্য লোড করা যায়নি')),
                     ),
 
-                    const Divider(height: 1),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
 
-                    // Customer Info
+                    // Customer Info (Delivery)
                     customerAsync.when(
                       data: (u) => _ContactCard(
                         title: 'কাস্টমার (Delivery)',
@@ -206,7 +183,7 @@ class RiderMyDeliveriesTab extends ConsumerWidget {
                         icon: Icons.person,
                       ),
                       loading: () => const Padding(padding: EdgeInsets.all(16), child: LinearProgressIndicator()),
-                      error: (_, __) => const Padding(padding: EdgeInsets.all(16), child: Text('কাস্টমার তথ্য লোড করা যায়নি')),
+                      error: (_, _) => const Padding(padding: EdgeInsets.all(16), child: Text('কাস্টমার তথ্য লোড করা যায়নি')),
                     ),
 
                     const Divider(height: 1),
@@ -237,8 +214,61 @@ class RiderMyDeliveriesTab extends ConsumerWidget {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: () {
-                                repo.updateDeliveryStatus(orderId, _nextStatus(status));
+                              onPressed: () async {
+                                final nextStatus = _nextStatus(status);
+                                
+                                if (nextStatus == 'picked_up') {
+                                  // PRE-PICKUP SAFETY CHECK
+                                  final hasPermission = await LocationService.ensureRiderTrackingPermission();
+                                  if (!hasPermission) {
+                                    if (context.mounted) {
+                                      showDialog(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                          title: const Row(
+                                            children: [
+                                              Icon(Icons.location_off_rounded, color: Colors.red),
+                                              SizedBox(width: 10),
+                                              Text('লোকেশন অন নেই!'),
+                                            ],
+                                          ),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text('ডেলিভারি ট্র্যাকিংয়ের জন্য আপনাকে নিচের ২ টি কাজ অবশ্যই করতে হবে:'),
+                                              const SizedBox(height: 16),
+                                              _buildStepItem(Icons.gps_fixed, '১. ফোনের GPS/Location সার্ভিস অন করুন'),
+                                              const SizedBox(height: 12),
+                                              _buildStepItem(Icons.security, '২. অ্যাপের লোকেশন পারমিশন "Allow" করুন'),
+                                              const SizedBox(height: 16),
+                                              const Text(
+                                                'এই দুটি অন না থাকলে আপনি অর্ডার পিকআপ করতে পারবেন না।',
+                                                style: TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic),
+                                              ),
+                                            ],
+                                          ),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('বাতিল')),
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                Navigator.pop(ctx);
+                                                Geolocator.openLocationSettings();
+                                                Geolocator.openAppSettings();
+                                              },
+                                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                                              child: const Text('সেটিংস ঠিক করুন'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                    return;
+                                  }
+                                }
+
+                                repo.updateDeliveryStatus(orderId, nextStatus);
                               },
                               style: ElevatedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -257,6 +287,20 @@ class RiderMyDeliveriesTab extends ConsumerWidget {
           },
         );
       },
+    );
+  }
+
+  Widget _buildStepItem(IconData icon, String text) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+          child: Icon(icon, size: 16, color: AppColors.primary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+      ],
     );
   }
 }

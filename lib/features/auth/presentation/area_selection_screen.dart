@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/supabase_auth_provider.dart';
 import '../providers/area_provider.dart';
 import '../providers/user_provider.dart';
-import '../data/user_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../customer/presentation/customer_main_shell.dart';
 

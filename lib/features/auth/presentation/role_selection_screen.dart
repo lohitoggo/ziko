@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
 import '../../../core/theme/app_theme.dart';
-import 'area_selection_screen.dart';
 import 'profile_setup_screen.dart';
 import '../../restaurant/presentation/business_registration_screen.dart';
 import '../../rider/presentation/rider_registration_screen.dart';
@@ -140,7 +138,7 @@ class _RoleCard extends StatelessWidget {
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -152,7 +150,7 @@ class _RoleCard extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: color, size: 26),
@@ -172,7 +170,7 @@ class _RoleCard extends StatelessWidget {
               ),
             ),
             Icon(Icons.arrow_forward_ios,
-                size: 15, color: AppColors.muted.withOpacity(0.6)),
+                size: 15, color: AppColors.muted.withValues(alpha: 0.6)),
           ],
         ),
       ),

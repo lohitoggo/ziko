@@ -1,16 +1,72 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../auth/providers/user_provider.dart';
 import '../../auth/providers/supabase_auth_provider.dart';
 import '../../auth/presentation/auth_wrapper.dart';
 import '../providers/rider_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/upload_provider.dart';
 
-class RiderProfileScreen extends ConsumerWidget {
+class RiderProfileScreen extends ConsumerStatefulWidget {
   const RiderProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RiderProfileScreen> createState() => _RiderProfileScreenState();
+}
+
+class _RiderProfileScreenState extends ConsumerState<RiderProfileScreen> {
+  bool _isUploading = false;
+
+  Future<void> _pickAndUploadImage(String uid) async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+
+    if (image == null) return;
+
+    setState(() => _isUploading = true);
+
+    try {
+      final uploadService = ref.read(uploadServiceProvider);
+      final repo = ref.read(userRepositoryProvider);
+      
+      final imageUrl = await uploadService.uploadImage(File(image.path), 'profile_pics');
+      
+      if (imageUrl != null) {
+        await repo.updateProfileImage(uid, imageUrl);
+        ref.invalidate(currentUserProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('প্রোফাইল ছবি আপডেট করা হয়েছে')),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ছবি আপলোড করতে সমস্যা হয়েছে')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final userAsync = ref.watch(currentUserProvider);
     final isOnlineAsync = ref.watch(riderOnlineStatusProvider);
     final completedAsync = ref.watch(myCompletedDeliveriesProvider);
@@ -40,23 +96,43 @@ class RiderProfileScreen extends ConsumerWidget {
                   ),
                   child: Column(
                     children: [
-                      Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                            child: const Icon(Icons.person, size: 50, color: AppColors.primary),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                              child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                      GestureDetector(
+                        onTap: _isUploading ? null : () => _pickAndUploadImage(user.uid),
+                        child: Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 50,
+                              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                              backgroundImage: user.profileImageUrl != null 
+                                ? CachedNetworkImageProvider(user.profileImageUrl!) 
+                                : null,
+                              child: user.profileImageUrl == null 
+                                ? const Icon(Icons.person, size: 50, color: AppColors.primary)
+                                : null,
                             ),
-                          ),
-                        ],
+                            if (_isUploading)
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black26,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                                child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -74,7 +150,7 @@ class RiderProfileScreen extends ConsumerWidget {
                           completedAsync.when(
                             data: (orders) => _StatItem(label: 'মোট ডেলিভারি', value: '${orders.length}'),
                             loading: () => const _StatItem(label: 'লোড হচ্ছে...', value: '-'),
-                            error: (_, __) => const _StatItem(label: 'Error', value: '0'),
+                            error: (_, _) => const _StatItem(label: 'Error', value: '0'),
                           ),
                           const _StatItem(label: 'রেটিং', value: '4.8 ⭐'),
                         ],
@@ -111,7 +187,7 @@ class RiderProfileScreen extends ConsumerWidget {
                         ),
                         Switch(
                           value: isOnline,
-                          activeColor: AppColors.softGreen,
+                          activeThumbColor: AppColors.softGreen,
                           onChanged: (val) {
                             ref.read(riderRepositoryProvider).setOnlineStatus(user.uid, val);
                           },
@@ -120,7 +196,7 @@ class RiderProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   loading: () => const SizedBox(),
-                  error: (_, __) => const SizedBox(),
+                  error: (_, _) => const SizedBox(),
                 ),
                 
                 const SizedBox(height: 25),
@@ -134,7 +210,7 @@ class RiderProfileScreen extends ConsumerWidget {
                   icon: Icons.logout, 
                   title: 'লগআউট', 
                   isDestructive: true, 
-                  onTap: () => _showLogoutDialog(context, ref)
+                  onTap: () => _showLogoutDialog(context)
                 ),
                 const SizedBox(height: 50),
               ],
@@ -169,7 +245,7 @@ class RiderProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+  void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

@@ -47,6 +47,13 @@ class _RiderHomeScreenState extends ConsumerState<RiderHomeScreen> {
 
     // 3. Cold-start action check
     CallNotificationService.checkPendingOrderAction();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = ref.read(supabaseUserProvider);
+      if (user != null) {
+        ref.read(riderRepositoryProvider).resumeActiveTrackings(user.id);
+      }
+    });
   }
 
   Future<void> _checkPermissions() async {
@@ -81,7 +88,7 @@ class _RiderHomeScreenState extends ConsumerState<RiderHomeScreen> {
                 ),
                 Text(
                   'Order Call আসার জন্য "Display over other apps" এবং "Background Pop-up" অন থাকা জরুরি।',
-                  style: GoogleFonts.urbanist(color: Colors.white.withOpacity(0.9), fontSize: 11),
+                  style: GoogleFonts.urbanist(color: Colors.white.withValues(alpha: 0.9), fontSize: 11),
                 ),
               ],
             ),
@@ -202,7 +209,7 @@ class _RiderHomeScreenState extends ConsumerState<RiderHomeScreen> {
                         scale: 0.8,
                         child: Switch(
                           value: isOnline,
-                          activeColor: AppColors.softGreen,
+                          activeThumbColor: AppColors.softGreen,
                           activeTrackColor: Colors.white24,
                           inactiveThumbColor: Colors.white,
                           inactiveTrackColor: Colors.white12,
@@ -218,7 +225,7 @@ class _RiderHomeScreenState extends ConsumerState<RiderHomeScreen> {
                   ),
                 ),
                 loading: () => const SizedBox(),
-                error: (_, __) => const SizedBox(),
+                error: (_, _) => const SizedBox(),
               ),
               IconButton(
                 icon: const Icon(Icons.account_circle),

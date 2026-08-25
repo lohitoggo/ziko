@@ -10,16 +10,40 @@ class LocationService {
   }
 
   /// Checks the full set of requirements before an active rider delivery.
-  static Future<bool> ensureRiderTrackingPermission() async {
-    if (!await Geolocator.isLocationServiceEnabled()) return false;
+  static Future<bool>
+  ensureRiderTrackingPermission() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      await Geolocator.openLocationSettings();
 
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        return false;
+      }
     }
 
-    return permission == LocationPermission.whileInUse ||
-        permission == LocationPermission.always;
+    var permission =
+    await Geolocator.checkPermission();
+
+    if (permission ==
+        LocationPermission.denied) {
+      permission =
+      await Geolocator.requestPermission();
+    }
+
+    if (permission ==
+        LocationPermission.deniedForever) {
+      await Geolocator.openAppSettings();
+      return false;
+    }
+
+    if (permission ==
+        LocationPermission.denied) {
+      return false;
+    }
+
+    return permission ==
+        LocationPermission.whileInUse ||
+        permission ==
+            LocationPermission.always;
   }
 
   /// Get current user location with high accuracy
@@ -41,11 +65,13 @@ class LocationService {
   }
 
   /// Rider GPS stream. Database throttling happens in TrackingRepository.
-  static Stream<Position> getRiderLocationStream() {
+  static Stream<Position>
+  getRiderLocationStream() {
     return Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
+      locationSettings:
+      const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
+        distanceFilter: 10,
       ),
     );
   }

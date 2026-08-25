@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
+import 'package:latlong2/latlong.dart' as ll;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../core/theme/app_theme.dart';
 
 class MapPickerScreen extends StatefulWidget {
-  final LatLng initialLocation;
+  final ll.LatLng initialLocation;
   const MapPickerScreen({super.key, required this.initialLocation});
 
   @override
@@ -15,8 +15,8 @@ class MapPickerScreen extends StatefulWidget {
 }
 
 class _MapPickerScreenState extends State<MapPickerScreen> {
-  late LatLng _pickedLocation;
-  final MapController _mapController = MapController();
+  late ll.LatLng _pickedLocation;
+  gm.GoogleMapController? _mapController;
   final TextEditingController _searchCtrl = TextEditingController();
   bool _isSearching = false;
 
@@ -32,6 +32,8 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
 
     setState(() => _isSearching = true);
     try {
+      // Still using Nominatim for geocoding to avoid requiring Google Places API key, 
+      // but the UI will now show Google Maps.
       final url = Uri.parse('https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=1');
       final response = await http.get(url, headers: {'User-Agent': 'ziko_app'});
       
@@ -40,9 +42,11 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         if (data.isNotEmpty) {
           final lat = double.parse(data[0]['lat']);
           final lon = double.parse(data[0]['lon']);
-          final newPos = LatLng(lat, lon);
+          final newPos = ll.LatLng(lat, lon);
           
-          _mapController.move(newPos, 17);
+          _mapController?.animateCamera(
+            gm.CameraUpdate.newLatLngZoom(gm.LatLng(lat, lon), 17),
+          );
           setState(() {
             _pickedLocation = newPos;
           });
@@ -65,7 +69,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         title: Text('Adjust Location', style: GoogleFonts.urbanist(fontWeight: FontWeight.bold, color: AppColors.charcoal)),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.white.withOpacity(0.9),
+        backgroundColor: Colors.white.withValues(alpha: 0.9),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.charcoal),
           onPressed: () => Navigator.pop(context),
@@ -73,26 +77,21 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
       ),
       body: Stack(
         children: [
-          // 1. The Map
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: widget.initialLocation,
-              initialZoom: 17,
-              onPositionChanged: (pos, hasGesture) {
-                if (hasGesture && pos.center != null) {
-                  setState(() {
-                    _pickedLocation = pos.center!;
-                  });
-                }
-              },
+          // 1. Google Map
+          gm.GoogleMap(
+            initialCameraPosition: gm.CameraPosition(
+              target: gm.LatLng(widget.initialLocation.latitude, widget.initialLocation.longitude),
+              zoom: 17,
             ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-                userAgentPackageName: 'com.ziko.app',
-              ),
-            ],
+            onMapCreated: (controller) => _mapController = controller,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: false,
+            onCameraMove: (position) {
+              setState(() {
+                _pickedLocation = ll.LatLng(position.target.latitude, position.target.longitude);
+              });
+            },
           ),
 
           // 2. Fixed Center Marker
@@ -107,7 +106,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(10),
-                      boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
                     ),
                     child: const Text('Move map to pick', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                   ),
@@ -129,7 +128,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(15),
-                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
                   ),
                   child: TextField(
                     controller: _searchCtrl,
@@ -152,7 +151,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(24),
-                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 30, offset: const Offset(0, 10))],
+                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 30, offset: Offset(0, 10))],
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -194,7 +193,12 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
             top: MediaQuery.of(context).padding.top + 70, right: 20,
             child: FloatingActionButton.small(
               onPressed: () {
-                _mapController.move(widget.initialLocation, 17);
+                _mapController?.animateCamera(
+                  gm.CameraUpdate.newLatLngZoom(
+                    gm.LatLng(widget.initialLocation.latitude, widget.initialLocation.longitude),
+                    17,
+                  ),
+                );
                 setState(() => _pickedLocation = widget.initialLocation);
               },
               backgroundColor: Colors.white,

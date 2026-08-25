@@ -50,3 +50,7 @@ final businessesByAreaProvider = StreamProvider<List<BusinessModel>>((ref) {
                     b.description.toLowerCase().contains(query))
       .toList());
 });
+
+final businessProvider = StreamProvider.family<BusinessModel?, String>((ref, businessId) {
+  return ref.watch(businessRepositoryProvider).watchBusiness(businessId);
+});

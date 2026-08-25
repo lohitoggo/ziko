@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../auth/providers/supabase_auth_provider.dart';
-import '../../auth/providers/user_provider.dart';
 import '../../auth/presentation/auth_wrapper.dart';
 import '../providers/restaurant_owner_provider.dart';
 import 'restaurant_orders_tab.dart';
@@ -77,7 +76,7 @@ class _RestaurantHomeScreenState extends ConsumerState<RestaurantHomeScreen> {
                 ),
                 Text(
                   'অর্ডার কল আসার জন্য "Display over other apps" এবং "Background Pop-up" অন থাকা জরুরি।',
-                  style: GoogleFonts.urbanist(color: Colors.white.withOpacity(0.9), fontSize: 11),
+                  style: GoogleFonts.urbanist(color: Colors.white.withValues(alpha: 0.9), fontSize: 11),
                 ),
               ],
             ),

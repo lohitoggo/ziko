@@ -14,6 +14,7 @@ class AppUser {
   final String? vehicleType; // For Riders
   final String? identityNo; // NID/Aadhar for verification
   final String? bankDetails; // For Payouts (Riders/Owners)
+  final String? profileImageUrl;
 
   AppUser({
     required this.uid,
@@ -31,6 +32,7 @@ class AppUser {
     this.vehicleType,
     this.identityNo,
     this.bankDetails,
+    this.profileImageUrl,
   });
 
   Map<String, dynamic> toMap() {
@@ -50,6 +52,7 @@ class AppUser {
       'vehicle_type': vehicleType,
       'identity_no': identityNo,
       'bank_details': bankDetails,
+      'profile_image_url': profileImageUrl,
     };
   }
 
@@ -70,6 +73,7 @@ class AppUser {
       vehicleType: map['vehicle_type'],
       identityNo: map['identity_no'],
       bankDetails: map['bank_details'],
+      profileImageUrl: map['profile_image_url'],
     );
   }
 
@@ -87,6 +91,7 @@ class AppUser {
     String? vehicleType,
     String? identityNo,
     String? bankDetails,
+    String? profileImageUrl,
   }) {
     return AppUser(
       uid: uid,
@@ -104,6 +109,7 @@ class AppUser {
       vehicleType: vehicleType ?? this.vehicleType,
       identityNo: identityNo ?? this.identityNo,
       bankDetails: bankDetails ?? this.bankDetails,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
     );
   }
 }

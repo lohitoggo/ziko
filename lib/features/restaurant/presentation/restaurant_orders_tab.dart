@@ -100,9 +100,9 @@ class RestaurantOrdersTab extends ConsumerWidget {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
                       ],
-                      border: Border.all(color: _statusColor(status).withOpacity(0.2)),
+                      border: Border.all(color: _statusColor(status).withValues(alpha: 0.2)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,7 +124,7 @@ class RestaurantOrdersTab extends ConsumerWidget {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
-                                  color: _statusColor(status).withOpacity(0.1),
+                                  color: _statusColor(status).withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Text(
@@ -142,9 +142,9 @@ class RestaurantOrdersTab extends ConsumerWidget {
                             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.05),
+                              color: AppColors.primary.withValues(alpha: 0.05),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,7 +184,7 @@ class RestaurantOrdersTab extends ConsumerWidget {
                                         margin: const EdgeInsets.only(top: 4),
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: (paymentStatus == 'paid' ? Colors.green : Colors.orange).withOpacity(0.1),
+                                          color: (paymentStatus == 'paid' ? Colors.green : Colors.orange).withValues(alpha: 0.1),
                                           borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Text(
@@ -267,9 +267,9 @@ class RestaurantOrdersTab extends ConsumerWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.teal.withOpacity(0.1),
+            color: Colors.teal.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.teal.withOpacity(0.2)),
+            border: Border.all(color: Colors.teal.withValues(alpha: 0.2)),
           ),
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -285,7 +285,7 @@ class RestaurantOrdersTab extends ConsumerWidget {
         padding: const EdgeInsets.all(12),
         width: double.infinity,
         decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.05),
+          color: Colors.blue.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Row(
@@ -341,7 +341,7 @@ class _OrderItemsList extends ConsumerWidget {
         ),
       ),
       loading: () => const Padding(padding: EdgeInsets.all(16), child: LinearProgressIndicator()),
-      error: (_, __) => const Padding(padding: EdgeInsets.all(16), child: Text('আইটেম লোড করা যায়নি')),
+      error: (_, _) => const Padding(padding: EdgeInsets.all(16), child: Text('আইটেম লোড করা যায়নি')),
     );
   }
 }
