@@ -8,6 +8,7 @@ import '../../auth/providers/user_provider.dart';
 import '../../auth/providers/supabase_auth_provider.dart';
 import '../../auth/presentation/auth_wrapper.dart';
 import '../../auth/data/user_model.dart';
+import '../../auth/data/phone_auth_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/upload_provider.dart';
 import '../providers/order_provider.dart';
@@ -163,9 +164,16 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   style: GoogleFonts.urbanist(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 1, color: Colors.white),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  user.phone,
-                  style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white70),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      user.phone,
+                      style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white70),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildVerificationBadge(user),
+                  ],
                 ),
               ],
             ),
@@ -273,6 +281,146 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 ),
               ),
               Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey.shade300),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVerificationBadge(AppUser user) {
+    if (user.isPhoneVerified) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.green.shade300, width: 0.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.verified_rounded, color: Colors.green, size: 12),
+            const SizedBox(width: 4),
+            Text('VERIFIED', style: GoogleFonts.urbanist(color: Colors.green, fontSize: 10, fontWeight: FontWeight.w800)),
+          ],
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () => _showVerificationDialog(context, user.phone),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red.shade300, width: 0.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 12),
+            const SizedBox(width: 4),
+            Text('VERIFY NOW', style: GoogleFonts.urbanist(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.w800)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showVerificationDialog(BuildContext context, String phone) {
+    final TextEditingController otpController = TextEditingController();
+    final authService = PhoneAuthService(); // Moved outside to persist state
+    bool isOtpSent = false;
+    bool isVerifying = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, top: 24, left: 24, right: 24),
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Mobile Verification', style: GoogleFonts.urbanist(fontSize: 20, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              Text(isOtpSent ? 'Enter 6-digit code sent to $phone' : 'We will send a 6-digit code to $phone', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
+              const SizedBox(height: 24),
+              if (isOtpSent)
+                TextField(
+                  controller: otpController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 10),
+                  decoration: InputDecoration(
+                    counterText: '',
+                    hintText: '000000',
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                  ),
+                ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: isVerifying ? null : () async {
+                    if (!isOtpSent) {
+                      setModalState(() => isVerifying = true);
+                      
+                      // Format phone number (Add +91 for India if not present)
+                      String formattedPhone = phone.trim();
+                      if (!formattedPhone.startsWith('+')) {
+                        formattedPhone = '+91$formattedPhone';
+                      }
+
+                      await authService.sendOtp(
+                        phoneNumber: formattedPhone,
+                        onCodeSent: (vid) {
+                          setModalState(() {
+                            isVerifying = false;
+                            isOtpSent = true;
+                          });
+                        },
+                        onError: (error) {
+                          setModalState(() => isVerifying = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $error'), backgroundColor: Colors.redAccent)
+                            );
+                          }
+                        },
+                      );
+                    } else {
+                      if (otpController.text.length < 4 && otpController.text.length < 6) return;
+                      setModalState(() => isVerifying = true);
+                      
+                      final success = await authService.verifyOtp(otpController.text);
+                      if (success) {
+                        ref.invalidate(currentUserProvider);
+                        if (mounted) Navigator.pop(context);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mobile number verified successfully! ✅'), backgroundColor: Colors.green));
+                        }
+                      } else {
+                        setModalState(() => isVerifying = false);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid OTP. Please try again.'), backgroundColor: Colors.redAccent));
+                        }
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF45D27), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                  child: isVerifying ? const CircularProgressIndicator(color: Colors.white) : Text(isOtpSent ? 'VERIFY OTP' : 'SEND OTP', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(height: 40),
             ],
           ),
         ),

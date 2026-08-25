@@ -15,6 +15,7 @@ class AppUser {
   final String? identityNo; // NID/Aadhar for verification
   final String? bankDetails; // For Payouts (Riders/Owners)
   final String? profileImageUrl;
+  final bool isPhoneVerified;
 
   AppUser({
     required this.uid,
@@ -33,6 +34,7 @@ class AppUser {
     this.identityNo,
     this.bankDetails,
     this.profileImageUrl,
+    this.isPhoneVerified = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -53,6 +55,7 @@ class AppUser {
       'identity_no': identityNo,
       'bank_details': bankDetails,
       'profile_image_url': profileImageUrl,
+      'is_phone_verified': isPhoneVerified,
     };
   }
 
@@ -74,6 +77,7 @@ class AppUser {
       identityNo: map['identity_no'],
       bankDetails: map['bank_details'],
       profileImageUrl: map['profile_image_url'],
+      isPhoneVerified: map['is_phone_verified'] ?? false,
     );
   }
 
@@ -92,6 +96,7 @@ class AppUser {
     String? identityNo,
     String? bankDetails,
     String? profileImageUrl,
+    bool? isPhoneVerified,
   }) {
     return AppUser(
       uid: uid,
@@ -110,6 +115,7 @@ class AppUser {
       identityNo: identityNo ?? this.identityNo,
       bankDetails: bankDetails ?? this.bankDetails,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
     );
   }
 }

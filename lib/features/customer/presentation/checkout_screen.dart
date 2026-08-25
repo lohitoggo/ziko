@@ -12,6 +12,7 @@ import '../../auth/data/area_model.dart';
 import '../../admin/providers/admin_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/payment/payment_service.dart';
+import '../../auth/data/phone_auth_service.dart';
 import 'order_success_screen.dart';
 import 'saved_addresses_screen.dart';
 import '../providers/address_provider.dart';
@@ -658,6 +659,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                                     null)
                                             ? null
                                             : () async {
+                                                // 0. MANDATORY PHONE VERIFICATION CHECK
+                                                if (!user.isPhoneVerified) {
+                                                  _showPhoneVerificationRequired(user.phone);
+                                                  return;
+                                                }
                                                 // 1. VALIDATE ADDRESS/GPS
                                                 if (_selectedAddress == null) {
                                                   ScaffoldMessenger.of(
@@ -1116,6 +1122,115 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     } finally {
       if (mounted) setState(() => _isPlacing = false);
     }
+  }
+
+  void _showPhoneVerificationRequired(String phone) {
+    final TextEditingController otpController = TextEditingController();
+    final authService = PhoneAuthService(); // Moved outside to persist state
+    bool isOtpSent = false;
+    bool isVerifying = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, top: 24, left: 24, right: 24),
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.phonelink_lock_rounded, size: 50, color: Color(0xFFF45D27)),
+              const SizedBox(height: 16),
+              Text('Verification Required', style: GoogleFonts.urbanist(fontSize: 20, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              Text(
+                isOtpSent 
+                  ? 'Enter 6-digit code sent to $phone' 
+                  : 'You must verify your phone number ($phone) before placing an order.', 
+                textAlign: TextAlign.center, 
+                style: TextStyle(color: Colors.grey.shade600)
+              ),
+              const SizedBox(height: 24),
+              if (isOtpSent)
+                TextField(
+                  controller: otpController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 10),
+                  decoration: InputDecoration(
+                    counterText: '',
+                    hintText: '000000',
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                  ),
+                ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: isVerifying ? null : () async {
+                    if (!isOtpSent) {
+                      setModalState(() => isVerifying = true);
+                      
+                      // Format phone number (Add +91 for India if not present)
+                      String formattedPhone = phone.trim();
+                      if (!formattedPhone.startsWith('+')) {
+                        formattedPhone = '+91$formattedPhone';
+                      }
+
+                      await authService.sendOtp(
+                        phoneNumber: formattedPhone,
+                        onCodeSent: (vid) {
+                          setModalState(() {
+                            isVerifying = false;
+                            isOtpSent = true;
+                          });
+                        },
+                        onError: (error) {
+                          setModalState(() => isVerifying = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $error'), backgroundColor: Colors.redAccent)
+                            );
+                          }
+                        },
+                      );
+                    } else {
+                      if (otpController.text.length < 4 && otpController.text.length < 6) return;
+                      setModalState(() => isVerifying = true);
+                      
+                      final success = await authService.verifyOtp(otpController.text);
+                      if (success) {
+                        ref.invalidate(currentUserProvider);
+                        if (mounted) Navigator.pop(context);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Phone verified! Now you can place your order. ✅'), backgroundColor: Colors.green));
+                        }
+                      } else {
+                        setModalState(() => isVerifying = false);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid OTP. Please try again.'), backgroundColor: Colors.redAccent));
+                        }
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF45D27), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                  child: isVerifying 
+                    ? const CircularProgressIndicator(color: Colors.white) 
+                    : Text(isOtpSent ? 'VERIFY & PLACE ORDER' : 'SEND OTP TO VERIFY', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _billRow(String label, double value, {bool isFree = false}) {
