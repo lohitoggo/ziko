@@ -11,6 +11,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
 import 'package:intl/intl.dart';
+import '../../grocery/presentation/add_grocery_product_screen.dart';
+import '../../grocery/providers/grocery_providers.dart';
 
 class RestaurantMenuTab extends ConsumerStatefulWidget {
   final String restaurantId;
@@ -414,33 +416,38 @@ class _RestaurantMenuTabState extends ConsumerState<RestaurantMenuTab> {
     final repo = ref.read(restaurantOwnerRepositoryProvider);
     final businessAsync = ref.watch(myRestaurantProvider);
     final isSalon = businessAsync.value?['category'] == 'salon';
+    final isGrocery = businessAsync.value?['category'] == 'grocery';
 
-    return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddEditSheet(context, isSalon: isSalon),
-        icon: const Icon(Icons.add),
-        label: Text(isSalon ? 'সার্ভিস যোগ করুন' : 'খাবার যোগ করুন'),
-      ),
-      body: itemsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('সমস্যা: $e')),
-        data: (items) {
-          final business = businessAsync.value;
-          if (items.isEmpty) {
-            return ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (isSalon) _buildGlobalSlotManager(context, business),
-                const SizedBox(height: 100),
-                Center(child: Text(isSalon ? 'এখনো কোনো সার্ভিস যোগ করা হয়নি\n"সার্ভিস যোগ করুন" চাপুন' : 'এখনো কোনো খাবার যোগ করা হয়নি\n"খাবার যোগ করুন" চাপুন')),
-              ],
-            );
-          }
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
-            children: [
-              if (isSalon) _buildGlobalSlotManager(context, business),
-              ...items.map((item) {
+    return isGrocery 
+      ? _buildGroceryInventoryView(context) 
+      : Scaffold(
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () {
+              _showAddEditSheet(context, isSalon: isSalon);
+            },
+            icon: const Icon(Icons.add),
+            label: Text(isSalon ? 'সার্ভিস যোগ করুন' : 'খাবার যোগ করুন'),
+          ),
+          body: itemsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(child: Text('সমস্যা: $e')),
+            data: (items) {
+              final business = businessAsync.value;
+              if (items.isEmpty) {
+                return ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    if (isSalon) _buildGlobalSlotManager(context, business),
+                    const SizedBox(height: 100),
+                    Center(child: Text(isSalon ? 'এখনো কোনো সার্ভিস যোগ করা হয়নি\n"সার্ভিস যোগ করুন" চাপুন' : 'এখনো কোনো খাবার যোগ করা হয়নি\n"খাবার যোগ করুন" চাপুন')),
+                  ],
+                );
+              }
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+                children: [
+                  if (isSalon) _buildGlobalSlotManager(context, business),
+                  ...items.map((item) {
                 final isAvailable = item['is_available'] ?? true;
                 final images = List<String>.from(item['image_urls'] ?? []);
 
@@ -515,6 +522,144 @@ class _RestaurantMenuTabState extends ConsumerState<RestaurantMenuTab> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildGroceryInventoryView(BuildContext context) {
+    // Switch to simple Shop Inventory Provider as everything is now unified
+    final inventoryAsync = ref.watch(shopInventoryProvider(widget.restaurantId));
+
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context, 
+            MaterialPageRoute(
+              builder: (_) => AddGroceryProductScreen(shopId: widget.restaurantId)
+            )
+          );
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('আইটেম যোগ করুন'),
+        backgroundColor: Colors.green,
+      ),
+      body: inventoryAsync.when(
+        data: (items) {
+          if (items.isEmpty) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
+                    SizedBox(height: 16),
+                    Text(
+                      'এখনো কোনো আইটেম নেই।\nঅ্যাডমিন বা আপনি আইটেম যোগ করলে এখানে দেখা যাবে।',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final inv = items[index];
+              final product = inv.product;
+              if (product == null) return const SizedBox();
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(10),
+                  leading: Container(
+                    width: 50, height: 50,
+                    decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(10)),
+                    child: product.imageUrl != null 
+                        ? CachedNetworkImage(imageUrl: product.imageUrl!, fit: BoxFit.contain)
+                        : const Icon(Icons.shopping_basket),
+                  ),
+                  title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('বিক্রয় মূল্য: ₹${inv.price.toInt()} • স্টক: ${inv.stockQuantity} ${product.unit ?? "pc"}'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () {
+                      Navigator.push(
+                        context, 
+                        MaterialPageRoute(
+                          builder: (_) => AddGroceryProductScreen(
+                            shopId: widget.restaurantId,
+                            initialBarcode: product.barcode,
+                          )
+                        )
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+      ),
+    );
+  }
+
+  Widget _buildGroceryScannerCard(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 20),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2), width: 1.5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const Icon(Icons.qr_code_scanner_rounded, size: 40, color: AppColors.primary),
+            const SizedBox(height: 12),
+            const Text(
+              'সহজেই প্রোডাক্ট যোগ করুন',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'বারকোড স্ক্যান করলেই প্রোডাক্টের সব তথ্য চলে আসবে।',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context, 
+                    MaterialPageRoute(
+                      builder: (_) => AddGroceryProductScreen(shopId: widget.restaurantId)
+                    )
+                  );
+                },
+                icon: const Icon(Icons.camera_alt_rounded),
+                label: const Text('স্ক্যান করুন (Barcode)'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

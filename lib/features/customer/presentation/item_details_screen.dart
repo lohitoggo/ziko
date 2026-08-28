@@ -47,13 +47,33 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
     final userAsync = ref.watch(currentUserProvider);
     final areasAsync = ref.watch(activeAreasProvider);
     final businessAsync = ref.watch(businessProvider(widget.item.restaurantId));
+    final business = businessAsync.value;
+
+    // --- Dynamic Theme Based on Category ---
+    final String cat = (business?.category ?? widget.item.category).toLowerCase();
+    final bool isSalon = cat == 'salon';
+    final bool isGrocery = cat == 'grocery';
+    final bool isMeat = cat == 'meat';
+    final bool isMedicine = cat == 'medicine';
+    final bool isTech = cat == 'electronics' || cat == 'tech';
+
+    final Color primaryColor = isSalon ? const Color(0xFFFFD700) : 
+                              (isGrocery ? const Color(0xFF00B251) : 
+                              (isMeat ? const Color(0xFFE11D48) : 
+                              (isMedicine ? const Color(0xFFFF0844) : 
+                              (isTech ? const Color(0xFF662D8C) : AppColors.primary))));
+
+    final bgColor = isSalon ? const Color(0xFF121214) : const Color(0xFFFFF8F4);
+    final cardColor = isSalon ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isSalon ? Colors.white : AppColors.charcoal;
+    final mutedTextColor = isSalon ? Colors.white70 : AppColors.muted;
 
     final displayImages = widget.item.imageUrls.isNotEmpty 
         ? widget.item.imageUrls 
         : (widget.item.imageUrl != null ? [widget.item.imageUrl!] : []);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F4),
+      backgroundColor: bgColor,
       body: Stack(
         children: [
           CustomScrollView(
@@ -63,7 +83,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                 expandedHeight: 250,
                 pinned: true,
                 automaticallyImplyLeading: false,
-                backgroundColor: Colors.white,
+                backgroundColor: isSalon ? Colors.black : Colors.white,
                 elevation: 0,
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
@@ -82,8 +102,8 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                             imageUrl: url,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            placeholder: (c, u) => Container(color: Colors.grey.shade100),
-                            errorWidget: (c, u, e) => _itemFallback(),
+                            placeholder: (c, u) => Container(color: isSalon ? Colors.black : Colors.grey.shade100),
+                            errorWidget: (c, u, e) => _itemFallback(primaryColor),
                           ),
                         )).toList(),
                       ),
@@ -108,7 +128,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                 title: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _circleAction(Icons.arrow_back_ios_new_rounded, () => Navigator.pop(context)),
+                    _circleAction(Icons.arrow_back_ios_new_rounded, () => Navigator.pop(context), isSalon),
                     Row(
                       children: [
                         Consumer(builder: (context, ref, _) {
@@ -122,11 +142,12 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                                 ref.invalidate(isInWishlistProvider(widget.item.id));
                               }
                             },
-                            iconColor: isInWishlist ? Colors.red : AppColors.charcoal,
+                            isSalon,
+                            iconColor: isInWishlist ? Colors.red : (isSalon ? Colors.white : AppColors.charcoal),
                           );
                         }),
                         const SizedBox(width: 12),
-                        _circleAction(Icons.share_outlined, () {}),
+                        _circleAction(Icons.share_outlined, () {}, isSalon),
                       ],
                     ),
                   ],
@@ -137,9 +158,9 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
               SliverToBoxAdapter(
                 child: Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +174,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                               style: GoogleFonts.urbanist(
                                 fontSize: 24, 
                                 fontWeight: FontWeight.w900, 
-                                color: AppColors.charcoal,
+                                color: textColor,
                                 height: 1.2,
                               ),
                             ),
@@ -162,14 +183,15 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              _vegNonVegBadge(widget.item.isVeg),
+                              if (isSalon) Icon(Icons.auto_awesome_rounded, color: primaryColor, size: 24)
+                              else _vegNonVegBadge(widget.item.isVeg),
                               const SizedBox(height: 6),
                               Row(
                                 children: [
                                   const Icon(Icons.star_rounded, color: AppColors.gold, size: 16),
                                   const SizedBox(width: 4),
                                   Text(widget.item.avgRating.toString(), 
-                                    style: GoogleFonts.urbanist(fontWeight: FontWeight.w800, fontSize: 13)),
+                                    style: GoogleFonts.urbanist(fontWeight: FontWeight.w800, fontSize: 13, color: textColor)),
                                 ],
                               ),
                             ],
@@ -177,21 +199,21 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                         ],
                       ),
                       Text('${(widget.item.stock + 50)}+ Sold',
-                        style: GoogleFonts.urbanist(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.w700)),
+                        style: GoogleFonts.urbanist(fontSize: 12, color: isSalon ? primaryColor : Colors.blue, fontWeight: FontWeight.w700)),
 
                       const SizedBox(height: 10),
-                      const Divider(height: 1),
+                      Divider(height: 1, color: isSalon ? Colors.white10 : Colors.grey.shade200),
                       const SizedBox(height: 10),
 
                       // 3. Price Section
                       Row(
                         children: [
                           Text('₹${widget.item.finalPrice.toInt()}', 
-                            style: GoogleFonts.urbanist(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.charcoal)),
+                            style: GoogleFonts.urbanist(fontSize: 28, fontWeight: FontWeight.w900, color: isSalon ? primaryColor : textColor)),
                           if (widget.item.hasDiscount) ...[
                             const SizedBox(width: 12),
                             Text('₹${widget.item.price.toInt()}', 
-                              style: const TextStyle(fontSize: 16, color: Colors.grey, decoration: TextDecoration.lineThrough)),
+                              style: TextStyle(fontSize: 16, color: isSalon ? Colors.white24 : Colors.grey, decoration: TextDecoration.lineThrough)),
                             const SizedBox(width: 12),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -203,33 +225,34 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                         ],
                       ),
                       
-                      Text('Description', style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 12),
+                      Text('Description', style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w800, color: textColor)),
                       const SizedBox(height: 8),
                       Text(
                         widget.item.description,
                         maxLines: _isExpanded ? 10 : 3,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.urbanist(color: AppColors.muted, fontSize: 14, height: 1.5, fontWeight: FontWeight.w500),
+                        style: GoogleFonts.urbanist(color: mutedTextColor, fontSize: 14, height: 1.5, fontWeight: FontWeight.w500),
                       ),
                       InkWell(
                         onTap: () => setState(() => _isExpanded = !_isExpanded),
                         child: Text(_isExpanded ? 'Read Less' : 'Read More', 
-                          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                          style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 13)),
                       ),
 
                       const SizedBox(height: 20),
                       
-                      // Appointment Info (Simplified since selection is in Cart)
+                      // Appointment Info
                       businessAsync.maybeWhen(
                         data: (b) => b?.category == 'salon' 
                           ? Container(
                               padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(15)),
+                              decoration: BoxDecoration(color: primaryColor.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(15)),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                                  Icon(Icons.info_outline, color: primaryColor, size: 20),
                                   const SizedBox(width: 12),
-                                  Expanded(child: Text('Note: You can select your booking date and time in the Cart after adding all desired services.', style: GoogleFonts.urbanist(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.muted))),
+                                  Expanded(child: Text('Note: You can select your booking date and time in the Cart after adding all desired services.', style: GoogleFonts.urbanist(fontSize: 12, fontWeight: FontWeight.w600, color: mutedTextColor))),
                                 ],
                               ),
                             )
@@ -238,7 +261,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                       ),
                       
                       const SizedBox(height: 20),
-                      _reviewsSection(),
+                      _reviewsSection(isSalon, textColor, primaryColor),
                       
                       const SizedBox(height: 120),
                     ],
@@ -254,7 +277,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isSalon ? const Color(0xFF1E1E1E) : Colors.white,
                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))],
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
               ),
@@ -262,17 +285,17 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: isSalon ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(15),
                     ),
                     child: Row(
                       children: [
-                        _qtyBtn(Icons.remove, () => cartNotifier.removeItem(widget.item.id)),
+                        _qtyBtn(Icons.remove, () => cartNotifier.removeItem(widget.item.id), primaryColor),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text('$quantity', style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w900)),
+                          child: Text('$quantity', style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w900, color: textColor)),
                         ),
-                        _qtyBtn(Icons.add, () => cartNotifier.addItem(widget.item)),
+                        _qtyBtn(Icons.add, () => cartNotifier.addItem(widget.item, isSalon: isSalon), primaryColor),
                       ],
                     ),
                   ),
@@ -280,23 +303,24 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        if (quantity == 0) cartNotifier.addItem(widget.item);
+                        if (quantity == 0) cartNotifier.addItem(widget.item, isSalon: isSalon);
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
                       },
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: primaryColor,
+                        foregroundColor: isSalon ? Colors.black : Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(quantity == 0 ? 'ADD TO CART' : 'VIEW CART', 
-                            style: GoogleFonts.urbanist(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1)),
+                            style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1)),
                           if (quantity > 0) ...[
                             const SizedBox(width: 10),
                             Text('• ₹${(widget.item.finalPrice * quantity).toInt()}', 
-                              style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                              style: TextStyle(color: isSalon ? Colors.black54 : Colors.white70, fontSize: 14)),
                           ],
                         ],
                       ),
@@ -311,13 +335,13 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
     );
   }
 
-  Widget _circleAction(IconData icon, VoidCallback onTap, {Color? iconColor}) {
+  Widget _circleAction(IconData icon, VoidCallback onTap, bool isSalon, {Color? iconColor}) {
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), shape: BoxShape.circle),
-        child: Icon(icon, color: iconColor ?? AppColors.charcoal, size: 20),
+        decoration: BoxDecoration(color: isSalon ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.9), shape: BoxShape.circle),
+        child: Icon(icon, color: iconColor ?? (isSalon ? Colors.white : AppColors.charcoal), size: 20),
       ),
     );
   }
@@ -330,293 +354,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
     );
   }
 
-  Widget _buildAppointmentSystem() {
-    final businessAsync = ref.watch(businessProvider(widget.item.restaurantId));
-    final selectedDate = ref.watch(selectedDateProvider);
-    final dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-    
-    // NEW: Global shop occupancy
-    final bookedSlotsAsync = ref.watch(businessBookedSlotsProvider('${widget.item.restaurantId}|$dateStr'));
-    
-    return businessAsync.when(
-      data: (business) {
-        if (business?.category != 'salon') return const SizedBox.shrink();
-
-        final selectedSlot = ref.watch(selectedSlotProvider);
-        final bookedSlots = bookedSlotsAsync.value ?? [];
-        final now = DateTime.now();
-        final isToday = selectedDate.year == now.year && 
-                        selectedDate.month == now.month && 
-                        selectedDate.day == now.day;
-
-        // MULTI-SLOT CALCULATION (Master Logic)
-        final cart = ref.watch(cartProvider);
-        int totalDuration = 0;
-        for (var item in cart.values) {
-          totalDuration += (item.food.duration as num).toInt();
-        }
-        // Add current item duration ONLY if it's not already in the cart
-        if (!cart.containsKey(widget.item.id)) {
-          totalDuration += (widget.item.duration as num).toInt();
-        }
-
-        // 1. HOLIDAY CHECK
-        final String dayName = DateFormat('EEEE').format(selectedDate);
-        final bool isOffDay = business!.offDay == dayName;
-
-        if (isOffDay) {
-          return Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(30),
-            decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24)),
-            child: Column(
-              children: [
-                const Icon(Icons.event_busy_rounded, color: Colors.red, size: 48),
-                const SizedBox(height: 12),
-                Text('দোকান আজ বন্ধ', style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.red)),
-                Text('আজ সাপ্তাহিক ছুটির দিন ($dayName)', style: const TextStyle(color: Colors.grey, fontSize: 13)),
-              ],
-            ),
-          );
-        }
-
-        // 2. DYNAMIC SLOT GENERATION (Double Shift Support)
-        final List<String> generatedSlots = [];
-        try {
-          // Helper to normalize and parse time string reliably
-          DateTime parseTime(String t) => DateFormat.jm().parse(t.trim().toUpperCase());
-
-          // Shift 1
-          final start1 = parseTime(business.openingTime);
-          final end1 = parseTime(business.closingTime);
-          var curr1 = DateTime(2024, 1, 1, start1.hour, start1.minute);
-          final targetEnd1 = DateTime(2024, 1, 1, end1.hour, end1.minute);
-          while (curr1.isBefore(targetEnd1)) {
-            generatedSlots.add(DateFormat.jm().format(curr1));
-            curr1 = curr1.add(const Duration(minutes: 15));
-          }
-
-          // Shift 2 (Optional)
-          if (business.hasDoubleShift) {
-            final start2 = parseTime(business.openingTime2);
-            final end2 = parseTime(business.closingTime2);
-            var curr2 = DateTime(2024, 1, 1, start2.hour, start2.minute);
-            final targetEnd2 = DateTime(2024, 1, 1, end2.hour, end2.minute);
-            while (curr2.isBefore(targetEnd2)) {
-              generatedSlots.add(DateFormat.jm().format(curr2));
-              curr2 = curr2.add(const Duration(minutes: 15));
-            }
-          }
-        } catch (e) {
-          generatedSlots.addAll(widget.item.availableSlots);
-        }
-
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Pick a Date', style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w900)),
-                  TextButton.icon(
-                    onPressed: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: selectedDate,
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 30)),
-                        builder: (context, child) {
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              colorScheme: const ColorScheme.light(
-                                primary: AppColors.primary,
-                                onPrimary: Colors.white,
-                                onSurface: AppColors.charcoal,
-                              ),
-                            ),
-                            child: child!,
-                          );
-                        },
-                      );
-                      if (picked != null) {
-                        ref.read(selectedDateProvider.notifier).state = picked;
-                        ref.read(selectedSlotProvider.notifier).state = null;
-                      }
-                    },
-                    icon: const Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.primary),
-                    label: Text('CALENDAR', style: GoogleFonts.urbanist(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Horizontal Date Picker (Quick select)
-              SizedBox(
-                height: 80,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: 14,
-                  itemBuilder: (context, index) {
-                    final date = DateTime.now().add(Duration(days: index));
-                    final isSelected = date.day == selectedDate.day && date.month == selectedDate.month;
-                    return InkWell(
-                      onTap: () {
-                        ref.read(selectedDateProvider.notifier).state = date;
-                        ref.read(selectedSlotProvider.notifier).state = null;
-                      },
-                      child: Container(
-                        width: 60,
-                        margin: const EdgeInsets.only(right: 10),
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primary : Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.shade200),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(DateFormat('EEE').format(date).toUpperCase(), style: TextStyle(color: isSelected ? Colors.white70 : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
-                            Text(date.day.toString(), style: TextStyle(color: isSelected ? Colors.white : AppColors.charcoal, fontSize: 18, fontWeight: FontWeight.w900)),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 25),
-              Text('Select Time Slot', style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 4),
-              Text('Shop Hours: ${business.openingTime} - ${business.closingTime}', style: GoogleFonts.urbanist(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 16),
-              
-              if (generatedSlots.isEmpty)
-                const Text('No slots available', style: TextStyle(color: Colors.grey, fontSize: 13))
-              else
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 2.2,
-                  ),
-                  itemCount: generatedSlots.length,
-                  itemBuilder: (context, index) {
-                    final slot = generatedSlots[index];
-                    
-                    bool isSlotAvailable = true;
-                    String blockReason = "";
-                    
-                    try {
-                      // PRECISION CHECK: Check if all needed 15-min blocks are free
-                      int blocksNeeded = (totalDuration / 15).ceil();
-
-                      for (int i = 0; i < blocksNeeded; i++) {
-                        if (index + i >= generatedSlots.length) {
-                          isSlotAvailable = false;
-                          blockReason = "End";
-                          break;
-                        }
-                        
-                        final checkSlot = generatedSlots[index + i];
-                        final normCheck = checkSlot.replaceAll(' ', '').toLowerCase().trim();
-                        
-                        // Check if booked in GLOBAL atomic timeline
-                        if (bookedSlots.any((b) => b.replaceAll(' ', '').toLowerCase().trim() == normCheck)) {
-                          isSlotAvailable = false;
-                          blockReason = "Full";
-                          break;
-                        }
-
-                        // Check if passed (for Today)
-                        if (isToday) {
-                          final timeParts = DateFormat.jm().parse(checkSlot);
-                          final slotTime = DateTime(now.year, now.month, now.day, timeParts.hour, timeParts.minute);
-                          if (slotTime.isBefore(now.add(const Duration(minutes: 10)))) {
-                            isSlotAvailable = false;
-                            blockReason = "Past";
-                            break;
-                          }
-                        }
-                      }
-                    } catch (e) {}
-
-                    final isSelected = selectedSlot == slot;
-                    
-                    // Highlight preview range (Atomic Blocks)
-                    bool isOccupiedByPreview = false;
-                    if (selectedSlot != null) {
-                      int blocksNeeded = (totalDuration / 15).ceil();
-                      final pickedIndex = generatedSlots.indexOf(selectedSlot);
-                      if (index >= pickedIndex && index < pickedIndex + blocksNeeded) {
-                        isOccupiedByPreview = true;
-                      }
-                    }
-
-                    return InkWell(
-                      onTap: !isSlotAvailable ? null : () => ref.read(selectedSlotProvider.notifier).state = slot,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: !isSlotAvailable 
-                              ? Colors.grey.shade100 
-                              : (isOccupiedByPreview ? AppColors.primary : Colors.white),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: !isSlotAvailable 
-                                ? Colors.grey.shade200 
-                                : (isOccupiedByPreview ? AppColors.primary : Colors.grey.shade300)
-                          ),
-                          boxShadow: isOccupiedByPreview ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.2), blurRadius: 8)] : null,
-                        ),
-                        child: Text(
-                          blockReason.isNotEmpty && !isSlotAvailable ? slot : slot,
-                          style: GoogleFonts.urbanist(
-                            color: !isSlotAvailable ? Colors.grey.shade400 : (isOccupiedByPreview ? Colors.white : AppColors.charcoal),
-                            fontWeight: FontWeight.bold, 
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              
-              if (bookedSlots.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline, size: 12, color: Colors.blue),
-                      const SizedBox(width: 4),
-                      Text('Live Occupancy: ${bookedSlots.length} segments taken today', style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
-      loading: () => const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
-      error: (_, _) => const SizedBox.shrink(),
-    );
-  }
-
   Widget _buildDeliveryInfo(AsyncValue userAsync, AsyncValue areasAsync) {
-    final businessAsync = ref.watch(businessProvider(widget.item.restaurantId));
-    final isSalon = businessAsync.value?.category == 'salon';
-    if (isSalon) return const SizedBox.shrink();
-
     return userAsync.when(
       data: (user) => areasAsync.when(
         data: (areasList) {
@@ -662,7 +400,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
     );
   }
 
-  Widget _reviewsSection() {
+  Widget _reviewsSection(bool isSalon, Color textColor, Color primaryColor) {
     final reviewsAsync = ref.watch(itemReviewsProvider(widget.item.id));
 
     return Column(
@@ -671,16 +409,16 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('রিভিউ এবং রেটিং', style: GoogleFonts.hindSiliguri(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.charcoal)),
+            Text('রিভিউ এবং রেটিং', style: GoogleFonts.hindSiliguri(fontSize: 18, fontWeight: FontWeight.w800, color: textColor)),
             reviewsAsync.when(
               data: (reviews) {
-                if (reviews.length <= 3) return Text('${reviews.length} টি রিভিউ', style: GoogleFonts.hindSiliguri(fontSize: 12, color: Colors.grey));
+                if (reviews.length <= 3) return Text('${reviews.length} টি রিভিউ', style: GoogleFonts.hindSiliguri(fontSize: 12, color: isSalon ? Colors.white60 : Colors.grey));
                 return TextButton(
                   onPressed: () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => AllReviewsScreen(itemId: widget.item.id, itemName: widget.item.name)));
                   },
                   style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                  child: Text('সব দেখুন', style: GoogleFonts.hindSiliguri(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.bold)),
+                  child: Text('সব দেখুন', style: GoogleFonts.hindSiliguri(fontSize: 12, color: primaryColor, fontWeight: FontWeight.bold)),
                 );
               },
               loading: () => const SizedBox.shrink(),
@@ -694,8 +432,8 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
             if (reviews.isEmpty) {
               return Container(
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade100)),
-                child: Center(child: Text('এখনো কোনো রিভিউ নেই। প্রথম রিভিউটি আপনি দিন!', style: GoogleFonts.hindSiliguri(color: Colors.grey, fontSize: 13))),
+                decoration: BoxDecoration(color: isSalon ? Colors.white.withValues(alpha: 0.05) : Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: isSalon ? Colors.white10 : Colors.grey.shade100)),
+                child: Center(child: Text('এখনো কোনো রিভিউ নেই। প্রথম রিভিউটি আপনি দিন!', style: GoogleFonts.hindSiliguri(color: isSalon ? Colors.white60 : Colors.grey, fontSize: 13))),
               );
             }
 
@@ -707,9 +445,9 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                   children: [
                     Column(
                       children: [
-                        Text(avg.toStringAsFixed(1), style: GoogleFonts.urbanist(fontSize: 32, fontWeight: FontWeight.w900, color: AppColors.charcoal)),
+                        Text(avg.toStringAsFixed(1), style: GoogleFonts.urbanist(fontSize: 32, fontWeight: FontWeight.w900, color: textColor)),
                         const Icon(Icons.star_rounded, color: AppColors.gold, size: 20),
-                        Text('গড় রেটিং', style: GoogleFonts.hindSiliguri(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                        Text('গড় রেটিং', style: GoogleFonts.hindSiliguri(fontSize: 10, color: isSalon ? Colors.white60 : Colors.grey, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(width: 30),
@@ -718,7 +456,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                         children: List.generate(5, (index) {
                           final star = 5 - index;
                           final count = reviews.where((r) => r.rating.round() == star).length;
-                          return _ratingBar(star, count / reviews.length);
+                          return _ratingBar(star, count / reviews.length, isSalon);
                         }),
                       ),
                     ),
@@ -734,7 +472,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                     final review = reviews[index];
                     return Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade100)),
+                      decoration: BoxDecoration(color: isSalon ? Colors.white.withValues(alpha: 0.05) : Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: isSalon ? Colors.white10 : Colors.grey.shade100)),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -742,7 +480,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 15,
-                                backgroundColor: Colors.grey.shade100,
+                                backgroundColor: isSalon ? Colors.white10 : Colors.grey.shade100,
                                 backgroundImage: review.profileImageUrl != null 
                                     ? CachedNetworkImageProvider(review.profileImageUrl!) 
                                     : null,
@@ -755,8 +493,8 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(review.userName, style: GoogleFonts.hindSiliguri(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.charcoal)),
-                                    Text(DateFormat('dd MMM yyyy').format(review.timestamp), style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                                    Text(review.userName, style: GoogleFonts.hindSiliguri(fontWeight: FontWeight.w800, fontSize: 14, color: textColor)),
+                                    Text(DateFormat('dd MMM yyyy').format(review.timestamp), style: TextStyle(fontSize: 10, color: isSalon ? Colors.white60 : Colors.grey)),
                                   ],
                                 ),
                               ),
@@ -767,11 +505,11 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                             children: List.generate(5, (i) => Icon(
                               Icons.star_rounded, 
                               size: 14, 
-                              color: i < review.rating.round() ? AppColors.gold : Colors.grey.shade100
+                              color: i < review.rating.round() ? AppColors.gold : (isSalon ? Colors.white10 : Colors.grey.shade100)
                             )),
                           ),
                           const SizedBox(height: 6),
-                          Text(review.comment, style: GoogleFonts.hindSiliguri(fontSize: 13, color: AppColors.muted, fontWeight: FontWeight.w500, height: 1.3)),
+                          Text(review.comment, style: GoogleFonts.hindSiliguri(fontSize: 13, color: isSalon ? Colors.white70 : AppColors.muted, fontWeight: FontWeight.w500, height: 1.3)),
                         ],
                       ),
                     );
@@ -781,32 +519,38 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, _) => Text('Error loading reviews: $err'),
+          error: (err, _) => Text('Error loading reviews: $err', style: TextStyle(color: textColor)),
         ),
       ],
     );
   }
 
-  Widget _ratingBar(int star, double value) {
+  Widget _ratingBar(int star, double value, bool isSalon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Text('$star', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+          Text('$star', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isSalon ? Colors.white60 : Colors.black)),
           const SizedBox(width: 8),
-          Expanded(child: LinearProgressIndicator(value: value, backgroundColor: Colors.grey.shade100, color: AppColors.softGreen, minHeight: 4, borderRadius: BorderRadius.circular(10))),
+          Expanded(child: LinearProgressIndicator(value: value, backgroundColor: isSalon ? Colors.white10 : Colors.grey.shade100, color: AppColors.softGreen, minHeight: 4, borderRadius: BorderRadius.circular(10))),
         ],
       ),
     );
   }
 
-  Widget _qtyBtn(IconData icon, VoidCallback onTap) {
-    return IconButton(onPressed: onTap, icon: Icon(icon, size: 18, color: AppColors.primary), constraints: const BoxConstraints(minWidth: 40, minHeight: 40));
+  Widget _qtyBtn(IconData icon, VoidCallback onTap, Color primaryColor) {
+    return IconButton(onPressed: onTap, icon: Icon(icon, size: 18, color: primaryColor), constraints: const BoxConstraints(minWidth: 40, minHeight: 40));
   }
 
-  Widget _itemFallback() {
+  Widget _itemFallback(Color primaryColor) {
     return Container(
-      decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFF45D27), Color(0xFFFF8A00)])),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [primaryColor.withValues(alpha: 0.8), primaryColor],
+        ),
+      ),
       child: const Center(child: Icon(Icons.fastfood_rounded, color: Colors.white70, size: 80)),
     );
   }

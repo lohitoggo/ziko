@@ -106,9 +106,6 @@ class OrderRepository {
     }
 
     try {
-      print('--- DEBUG: PLACING ORDER DATA ---');
-      orderData.forEach((key, value) => print('$key: $value (${value.runtimeType})'));
-      
       final orderResponse = await _supabase.from('orders').insert(orderData).select().single();
       final orderId = orderResponse['id'];
 
@@ -123,41 +120,48 @@ class OrderRepository {
 
       await _supabase.from('order_items').insert(orderItems);
 
-      // --- Send Notification to Owner WITH NEW CALL PROTOCOL ---
+      // --- Send Notification to Owner ---
       try {
-        final business = await _supabase.from('businesses').select('owner_id, name').eq('id', restaurantId).single();
-        final ownerId = business['owner_id'];
+        // Validate if restaurantId is a valid UUID before querying
+        final bool isValidUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(restaurantId);
         
-        final customerProfile = await _supabase.from('profiles').select('name').eq('id', customerUid).single();
-        final realCustomerName = customerProfile['name'] ?? 'Customer';
-
-        if (ownerId != null) {
-          final profile = await _supabase.from('profiles').select('notification_id').eq('id', ownerId).single();
-          final ownerNotificationId = profile['notification_id'];
+        if (isValidUuid) {
+          final business = await _supabase.from('businesses').select('owner_id, name').eq('id', restaurantId).maybeSingle();
           
-          if (ownerNotificationId != null) {
-            final itemsList = items.map((i) => '${i.quantity}x ${i.food.name}').join(', ');
+          if (business != null) {
+            final ownerId = business['owner_id'];
+            final customerProfile = await _supabase.from('profiles').select('name').eq('id', customerUid).maybeSingle();
+            final realCustomerName = customerProfile?['name'] ?? 'Customer';
 
-            await NotificationService.sendNotification(
-              targetNotificationId: ownerNotificationId,
-              title: 'নতুন অর্ডার এসেছে! 🛍️',
-              content: '$realCustomerName একটি নতুন অর্ডার দিয়েছেন।',
-              data: {
-                'action': 'incoming_order_call',
-                'callId': Uuid().v4(),
-                'orderId': orderId,
-                'amount': totalAmount.toString(),
-                'customerName': realCustomerName,
-                'items': itemsList, 
-                'appointment': appointmentTime,
-                'type': 'owner',
-                'timeoutSeconds': 30,
-              },
-            );
+            if (ownerId != null) {
+              final profile = await _supabase.from('profiles').select('notification_id').eq('id', ownerId).maybeSingle();
+              final ownerNotificationId = profile?['notification_id'];
+              
+              if (ownerNotificationId != null) {
+                final itemsList = items.map((i) => '${i.quantity}x ${i.food.name}').join(', ');
+
+                await NotificationService.sendNotification(
+                  targetNotificationId: ownerNotificationId,
+                  title: 'নতুন অর্ডার এসেছে! 🛍️',
+                  content: '$realCustomerName একটি নতুন অর্ডার দিয়েছেন (${business['name']})।',
+                  data: {
+                    'action': 'incoming_order_call',
+                    'callId': Uuid().v4(),
+                    'orderId': orderId,
+                    'amount': totalAmount.toString(),
+                    'customerName': realCustomerName,
+                    'items': itemsList, 
+                    'appointment': appointmentTime,
+                    'type': 'owner',
+                    'timeoutSeconds': 30,
+                  },
+                );
+              }
+            }
           }
         }
       } catch (e) {
-        print('Could not send owner call: $e');
+        print('Notification error skipped: $e');
       }
 
       return orderId;

@@ -35,35 +35,40 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final restaurantId = cartNotifier.restaurantId ?? '';
     final businessAsync = ref.watch(businessProvider(restaurantId));
     
-    // RELIABLE DETECTION: Use the parent business category
-    final bool isSalonBusiness = businessAsync.value?.category.toLowerCase() == 'salon';
-    
-    // Fallback: Check if any item in cart has 'salon' in its name or category
-    final bool hasSalonContext = items.any((item) => 
-        item.food.category.toLowerCase().contains('salon') || 
-        item.food.name.toLowerCase().contains('salon'));
+    final String cat = businessAsync.value?.category.toLowerCase() ?? '';
+    final bool isSalon = cat == 'salon';
+    final bool isGrocery = cat == 'grocery';
+    final bool isMeat = cat == 'meat';
+    final bool isMedicine = cat == 'medicine';
+    final bool isTech = cat == 'electronics' || cat == 'tech';
 
-    final bool showBookingSystem = isSalonBusiness || hasSalonContext;
+    final Color primaryColor = isSalon ? const Color(0xFFFFD700) : 
+                              (isGrocery ? const Color(0xFF00B251) : 
+                              (isMeat ? const Color(0xFFE11D48) : 
+                              (isMedicine ? const Color(0xFFFF0844) : 
+                              (isTech ? const Color(0xFF662D8C) : AppColors.primary))));
+
+    final bgColor = isSalon ? const Color(0xFF121214) : const Color(0xFFFFF8F4);
+    final cardColor = isSalon ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isSalon ? Colors.white : AppColors.charcoal;
+    final mutedTextColor = isSalon ? Colors.white70 : AppColors.muted;
+
+    final headerGradient = isSalon 
+        ? const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF000000), Color(0xFF1A1A1B)])
+        : LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [primaryColor, primaryColor.withValues(alpha: 0.8)]);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F4),
+      backgroundColor: bgColor,
       body: Column(
         children: [
-          // 1. Premium Gradient Header
           Container(
             padding: EdgeInsets.only(
               top: MediaQuery.of(context).padding.top + 10,
-              bottom: 20,
-              left: 16,
-              right: 16,
+              bottom: 20, left: 16, right: 16,
             ),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFF45D27), Color(0xFFFF8A00)],
-              ),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+            decoration: BoxDecoration(
+              gradient: headerGradient,
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
             ),
             child: Row(
               children: [
@@ -76,20 +81,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Your Cart',
-                      style: GoogleFonts.urbanist(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      isSalon ? 'Booking Review' : 'Your Cart',
+                      style: GoogleFonts.urbanist(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
                     ),
                     Text(
                       '${cartNotifier.totalItems} items selected',
-                      style: GoogleFonts.urbanist(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: GoogleFonts.urbanist(color: Colors.white.withValues(alpha: 0.8), fontSize: 13, fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
@@ -99,13 +96,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
           Expanded(
             child: items.isEmpty
-                ? _buildEmptyState()
+                ? _buildEmptyState(isSalon, primaryColor, textColor)
                 : SingleChildScrollView(
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 2. Items List
                         ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
@@ -114,8 +110,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             final item = items[index];
                             return _CartItemCard(
                               item: item,
+                              isSalon: isSalon,
                               onAdd: () {
-                                cartNotifier.addItem(item.food, isSalon: showBookingSystem, onSalonLimit: () {
+                                cartNotifier.addItem(item.food, isSalon: isSalon, onSalonLimit: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text('স্যালন সার্ভিসের জন্য একবারই বুকিং সম্ভব'),
@@ -131,25 +128,20 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         
                         const SizedBox(height: 20),
 
-                        // 3. SALON BOOKING SYSTEM
-                        if (showBookingSystem) 
+                        if (isSalon) 
                           businessAsync.when(
                             data: (business) => business != null 
-                                ? _buildSalonBooking(business) 
+                                ? _buildSalonBooking(business, primaryColor, cardColor) 
                                 : const Padding(
                                     padding: EdgeInsets.all(10),
-                                    child: Text('Loading shop details...'),
+                                    child: Text('Loading shop details...', style: TextStyle(color: Colors.grey)),
                                   ),
-                            loading: () => const Center(child: Padding(
-                              padding: EdgeInsets.all(20),
-                              child: CircularProgressIndicator(),
-                            )),
-                            error: (e, _) => Text('Error loading slots: $e'),
+                            loading: () => const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
+                            error: (e, _) => Text('Error: $e', style: const TextStyle(color: Colors.white)),
                           ),
 
                         const SizedBox(height: 25),
                         
-                        // 4. Bill Details Card (Dynamic)
                         userAsync.when(
                           skipLoadingOnReload: true,
                           data: (user) => areasAsync.when(
@@ -158,11 +150,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               final List<AreaModel> areas = List<AreaModel>.from(areasList);
                               if (areas.isEmpty) return const SizedBox.shrink();
 
-                              final AreaModel area = areas.firstWhere(
-                                (a) => a.id == user?.areaId, 
-                                orElse: () => areas.first,
-                              );
-                              final deliveryFee = showBookingSystem ? 0.0 : area.deliveryCharge;
+                              final AreaModel area = areas.firstWhere((a) => a.id == user?.areaId, orElse: () => areas.first);
+                              final deliveryFee = isSalon ? 0.0 : area.deliveryCharge;
                               
                               return settingsAsync.when(
                                 skipLoadingOnReload: true,
@@ -175,7 +164,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                     deliveryFee: deliveryFee,
                                     platformFee: platformFee,
                                     grandTotal: grandTotal,
-                                    isSalon: showBookingSystem,
+                                    isSalon: isSalon,
+                                    cardColor: cardColor,
+                                    textColor: textColor,
+                                    primaryColor: primaryColor,
                                   );
                                 },
                                 loading: () => userAsync.hasValue ? const SizedBox.shrink() : const LinearProgressIndicator(),
@@ -197,7 +189,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         ],
       ),
       
-      // 5. Sticky Bottom Checkout Bar (Dynamic)
       bottomNavigationBar: items.isEmpty
           ? null
           : userAsync.when(
@@ -206,17 +197,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   final List<AreaModel> areas = List<AreaModel>.from(areasList);
                   if (areas.isEmpty) return const SizedBox.shrink();
 
-                  final AreaModel area = areas.firstWhere(
-                    (a) => a.id == user?.areaId, 
-                    orElse: () => areas.first,
-                  );
-                  final deliveryFee = showBookingSystem ? 0.0 : area.deliveryCharge;
+                  final AreaModel area = areas.firstWhere((a) => a.id == user?.areaId, orElse: () => areas.first);
+                  final deliveryFee = isSalon ? 0.0 : area.deliveryCharge;
                   
                   return settingsAsync.when(
                     data: (settings) {
                       final platformFee = (settings?['platform_fee'] ?? 2).toDouble();
                       final grandTotal = cartNotifier.totalAmount + deliveryFee + platformFee;
-                      return _buildCheckoutBar(context, grandTotal, showBookingSystem, cartNotifier.selectedSlot);
+                      return _buildCheckoutBar(context, grandTotal, isSalon, cartNotifier.selectedSlot, primaryColor, textColor);
                     },
                     loading: () => const SizedBox.shrink(),
                     error: (_, _) => const SizedBox.shrink(),
@@ -231,7 +219,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     );
   }
 
-  Widget _buildSalonBooking(BusinessModel business) {
+  Widget _buildSalonBooking(BusinessModel business, Color gold, Color card) {
     final cartNotifier = ref.watch(cartProvider.notifier);
     final selectedDate = cartNotifier.selectedDate;
     final selectedSlot = cartNotifier.selectedSlot;
@@ -244,9 +232,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: card,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 15, offset: const Offset(0, 5))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,19 +242,18 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Booking Appointment', style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.charcoal)),
+              Text('Booking Appointment', style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
               IconButton(onPressed: () async {
                 final picked = await showDatePicker(
                   context: context, initialDate: selectedDate, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 30)),
-                  builder: (context, child) => Theme(data: Theme.of(context).copyWith(colorScheme: const ColorScheme.light(primary: AppColors.primary)), child: child!),
+                  builder: (context, child) => Theme(data: Theme.of(context).copyWith(colorScheme: ColorScheme.dark(primary: gold)), child: child!),
                 );
                 if (picked != null) cartNotifier.setAppointment(null, picked);
-              }, icon: const Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 20)),
+              }, icon: Icon(Icons.calendar_month_rounded, color: gold, size: 20)),
             ],
           ),
           const SizedBox(height: 10),
           
-          // Horizontal Date Quick Select
           SizedBox(
             height: 70,
             child: ListView.builder(
@@ -280,15 +267,15 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   child: Container(
                     width: 55, margin: const EdgeInsets.only(right: 10),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary : Colors.grey.shade50,
+                      color: isSelected ? gold : Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.shade200),
+                      border: Border.all(color: isSelected ? gold : Colors.white10),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(DateFormat('EEE').format(date).toUpperCase(), style: TextStyle(color: isSelected ? Colors.white : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
-                        Text(date.day.toString(), style: TextStyle(color: isSelected ? Colors.white : AppColors.charcoal, fontSize: 16, fontWeight: FontWeight.w900)),
+                        Text(DateFormat('EEE').format(date).toUpperCase(), style: TextStyle(color: isSelected ? Colors.black : Colors.grey, fontSize: 10, fontWeight: FontWeight.bold)),
+                        Text(date.day.toString(), style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
                       ],
                     ),
                   ),
@@ -298,32 +285,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ),
           
           const SizedBox(height: 20),
-          Text('Select Time Slot ($totalDuration min service)', style: GoogleFonts.urbanist(fontSize: 13, fontWeight: FontWeight.w700)),
+          Text('Select Time Slot ($totalDuration min service)', style: GoogleFonts.urbanist(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white70)),
           const SizedBox(height: 12),
 
-          // Generated Slots Grid
           bookedSlotsAsync.when(
-            loading: () => const LinearProgressIndicator(),
-            error: (e, _) => Text('Error loading slots: $e'),
+            loading: () => LinearProgressIndicator(color: gold, backgroundColor: Colors.white10),
+            error: (e, _) => Text('Error: $e', style: const TextStyle(color: Colors.red)),
             data: (bookedSlots) {
-              // PRIORITY: Use slots generated and saved by the Owner
               final List<String> slotsToDisplay = business.availableSlots;
-
-              if (slotsToDisplay.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        const Icon(Icons.info_outline, color: Colors.grey),
-                        const SizedBox(height: 8),
-                        Text('এই দোকানের কোনো স্লট পাওয়া যায়নি।', 
-                          style: GoogleFonts.urbanist(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                );
-              }
 
               return GridView.builder(
                 shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
@@ -334,7 +303,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   final slot = slotsToDisplay[index];
                   bool isSlotAvailable = true;
                   
-                  // Atomic Check Logic
                   int blocksNeeded = (totalDuration / 15).ceil();
                   for (int i = 0; i < blocksNeeded; i++) {
                     if (index + i >= slotsToDisplay.length) { isSlotAvailable = false; break; }
@@ -343,19 +311,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     
                     if (isToday) {
                       try {
-                        final clean = slotsToDisplay[index + i].trim().toUpperCase();
-                        DateTime st;
-                        try {
-                          st = DateFormat.jm().parse(clean);
-                        } catch (e) {
-                          final parts = clean.split(' ');
-                          final timeParts = parts[0].split(':');
-                          int h = int.parse(timeParts[0]);
-                          int m = timeParts.length > 1 ? int.parse(timeParts[1]) : 0;
-                          if (parts.length > 1 && parts[1] == 'PM' && h < 12) h += 12;
-                          if (parts.length > 1 && parts[1] == 'AM' && h == 12) h = 0;
-                          st = DateTime(now.year, now.month, now.day, h, m);
-                        }
+                        final st = DateFormat.jm().parse(slotsToDisplay[index + i].trim().toUpperCase());
                         final slotDateTime = DateTime(now.year, now.month, now.day, st.hour, st.minute);
                         if (slotDateTime.isBefore(now.add(const Duration(minutes: 10)))) { isSlotAvailable = false; break; }
                       } catch (e) {}
@@ -373,15 +329,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200), alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: !isSlotAvailable ? Colors.grey.shade100 : (isOccupiedPreview ? AppColors.primary : Colors.white),
-                        borderRadius: BorderRadius.circular(10), border: Border.all(color: !isSlotAvailable ? Colors.grey.shade200 : (isOccupiedPreview ? AppColors.primary : Colors.grey.shade300)),
+                        color: !isSlotAvailable ? Colors.white.withValues(alpha: 0.02) : (isOccupiedPreview ? gold : Colors.white.withValues(alpha: 0.05)),
+                        borderRadius: BorderRadius.circular(10), 
+                        border: Border.all(color: !isSlotAvailable ? Colors.white.withValues(alpha: 0.05) : (isOccupiedPreview ? gold : Colors.white10)),
                       ),
                       child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(slot, style: GoogleFonts.urbanist(color: !isSlotAvailable ? Colors.grey.shade400 : (isOccupiedPreview ? Colors.white : AppColors.charcoal), fontWeight: FontWeight.bold, fontSize: 9)),
-                        ),
+                        child: Text(slot, style: GoogleFonts.urbanist(color: !isSlotAvailable ? Colors.white24 : (isOccupiedPreview ? Colors.black : Colors.white), fontWeight: FontWeight.bold, fontSize: 9)),
                       ),
                     ),
                   );
@@ -394,73 +347,49 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(bool isSalon, Color primary, Color textColor) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.05),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.shopping_bag_outlined, size: 80, color: AppColors.primary.withValues(alpha: 0.4)),
+            decoration: BoxDecoration(color: primary.withValues(alpha: 0.05), shape: BoxShape.circle),
+            child: Icon(isSalon ? Icons.auto_awesome_rounded : Icons.shopping_bag_outlined, size: 80, color: primary.withValues(alpha: 0.4)),
           ),
           const SizedBox(height: 20),
-          Text(
-            'Your cart is empty',
-            style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.charcoal),
-          ),
+          Text('Your cart is empty', style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 8),
-          Text(
-            'Add something delicious to start!',
-            style: GoogleFonts.urbanist(fontSize: 14, color: AppColors.muted),
-          ),
+          Text(isSalon ? 'Add luxury treatments to book!' : 'Add something delicious to start!', style: GoogleFonts.urbanist(fontSize: 14, color: isSalon ? Colors.white60 : Colors.grey)),
         ],
       ),
     );
   }
 
   Widget _buildBillDetails({
-    required double itemTotal,
-    required double deliveryFee,
-    required double platformFee,
-    required double grandTotal,
-    bool isSalon = false,
+    required double itemTotal, required double deliveryFee, required double platformFee, required double grandTotal, 
+    bool isSalon = false, required Color cardColor, required Color textColor, required Color primaryColor,
   }) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5)),
-        ],
+        color: cardColor, borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isSalon ? 0.2 : 0.03), blurRadius: 15, offset: const Offset(0, 5))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Bill Details',
-            style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.charcoal),
-          ),
+          Text('Bill Details', style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w800, color: textColor)),
           const SizedBox(height: 16),
-          _billRow('Item Total', itemTotal),
-          if (!isSalon) _billRow('Delivery Fee', deliveryFee, isFree: deliveryFee == 0),
-          _billRow('Platform Fee', platformFee, isFee: true),
-          const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1, thickness: 0.5)),
+          _billRow('Item Total', itemTotal, textColor, isSalon),
+          if (!isSalon) _billRow('Delivery Fee', deliveryFee, textColor, isSalon, isFree: deliveryFee == 0),
+          _billRow('Platform Fee', platformFee, textColor, isSalon),
+          Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1, thickness: 0.5, color: isSalon ? Colors.white10 : Colors.grey.shade100)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'To Pay',
-                style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.charcoal),
-              ),
-              Text(
-                '₹${grandTotal.toInt()}',
-                style: GoogleFonts.urbanist(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.primary),
-              ),
+              Text('To Pay', style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w900, color: textColor)),
+              Text('₹${grandTotal.toInt()}', style: GoogleFonts.urbanist(fontSize: 20, fontWeight: FontWeight.w900, color: primaryColor)),
             ],
           ),
         ],
@@ -468,53 +397,34 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     );
   }
 
-  Widget _billRow(String label, double amount, {bool isFree = false, bool isFee = false}) {
+  Widget _billRow(String label, double amount, Color textColor, bool isSalon, {bool isFree = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.muted),
-          ),
-          Text(
-            isFree ? 'FREE' : '₹${amount.toInt()}',
-            style: GoogleFonts.urbanist(
-              fontSize: 14, 
-              fontWeight: FontWeight.w700, 
-              color: isFree ? Colors.green : AppColors.charcoal
-            ),
-          ),
+          Text(label, style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w500, color: isSalon ? Colors.white60 : Colors.grey)),
+          Text(isFree ? 'FREE' : '₹${amount.toInt()}', style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w700, color: isFree ? Colors.green : textColor)),
         ],
       ),
     );
   }
 
-  Widget _buildCheckoutBar(BuildContext context, double totalAmount, bool isSalon, String? selectedSlot) {
+  Widget _buildCheckoutBar(BuildContext context, double totalAmount, bool isSalon, String? selectedSlot, Color primary, Color textColor) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5)),
-        ],
+        color: isSalon ? const Color(0xFF1E1E1E) : Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isSalon ? 0.2 : 0.05), blurRadius: 20, offset: const Offset(0, -5))],
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: Row(
         children: [
           Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '₹${totalAmount.toInt()}',
-                style: GoogleFonts.urbanist(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.charcoal),
-              ),
-              Text(
-                'GRAND TOTAL',
-                style: GoogleFonts.urbanist(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.primary, letterSpacing: 0.5),
-              ),
+              Text('₹${totalAmount.toInt()}', style: GoogleFonts.urbanist(fontSize: 22, fontWeight: FontWeight.w900, color: textColor)),
+              Text('GRAND TOTAL', style: GoogleFonts.urbanist(fontSize: 10, fontWeight: FontWeight.w800, color: primary, letterSpacing: 0.5)),
             ],
           ),
           const SizedBox(width: 20),
@@ -525,21 +435,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               },
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: AppColors.primary,
+                backgroundColor: primary, foregroundColor: isSalon ? Colors.black : Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: 0,
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    (isSalon && selectedSlot == null) ? 'SELECT TIME' : 'CHECKOUT',
-                    style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1),
-                  ),
-                  const SizedBox(width: 10),
-                  const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
-                ],
-              ),
+              child: Text((isSalon && selectedSlot == null) ? 'SELECT TIME' : 'CHECKOUT', style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1)),
             ),
           ),
         ],
@@ -549,103 +448,55 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 }
 
 class _CartItemCard extends StatelessWidget {
-  final dynamic item;
-  final VoidCallback onAdd;
-  final VoidCallback onRemove;
-
-  const _CartItemCard({required this.item, required this.onAdd, required this.onRemove});
+  final dynamic item; final VoidCallback onAdd; final VoidCallback onRemove; final bool isSalon;
+  const _CartItemCard({required this.item, required this.onAdd, required this.onRemove, this.isSalon = false});
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = isSalon ? const Color(0xFFFFD700) : AppColors.primary;
+    final textColor = isSalon ? Colors.white : AppColors.charcoal;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 16), padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
+        color: isSalon ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: [
-          // Item Image
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: item.food.imageUrl != null && item.food.imageUrl!.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: item.food.imageUrl!,
-                    width: 65, height: 65,
-                    fit: BoxFit.cover,
-                    placeholder: (c, u) => Container(color: Colors.grey.shade100),
-                  )
-                : Container(
-                    width: 65, height: 65,
-                    color: AppColors.primary.withValues(alpha: 0.05),
-                    child: const Icon(Icons.fastfood_rounded, color: AppColors.primary, size: 28),
-                  ),
+                ? CachedNetworkImage(imageUrl: item.food.imageUrl!, width: 65, height: 65, fit: BoxFit.cover, placeholder: (c, u) => Container(color: Colors.grey.shade100))
+                : Container(width: 65, height: 65, color: primaryColor.withValues(alpha: 0.05), child: Icon(isSalon ? Icons.auto_awesome : Icons.fastfood_rounded, color: primaryColor, size: 28)),
           ),
           const SizedBox(width: 16),
-          
-          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.food.name,
-                  style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.charcoal),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '₹${item.food.finalPrice.toInt()} per unit',
-                  style: GoogleFonts.urbanist(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w600),
-                ),
+                Text(item.food.name, style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w800, color: textColor), maxLines: 1),
+                Text('₹${item.food.finalPrice.toInt()} per unit', style: GoogleFonts.urbanist(fontSize: 12, color: isSalon ? Colors.white60 : AppColors.muted, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
-                Text(
-                  '₹${(item.food.finalPrice * item.quantity).toInt()}',
-                  style: GoogleFonts.urbanist(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.primary),
-                ),
+                Text('₹${(item.food.finalPrice * item.quantity).toInt()}', style: GoogleFonts.urbanist(fontSize: 15, fontWeight: FontWeight.w900, color: primaryColor)),
               ],
             ),
           ),
-          
-          // Quantity Controller
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                _qtyBtn(Icons.remove, onRemove),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    '${item.quantity}',
-                    style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w900, color: AppColors.primary),
-                  ),
-                ),
-                _qtyBtn(Icons.add, onAdd),
-              ],
-            ),
+            decoration: BoxDecoration(color: primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+            child: Row(children: [
+              _qtyBtn(Icons.remove, onRemove, primaryColor),
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text('${item.quantity}', style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w900, color: primaryColor))),
+              _qtyBtn(Icons.add, onAdd, primaryColor),
+            ]),
           ),
         ],
       ),
     );
   }
 
-  Widget _qtyBtn(IconData icon, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: Icon(icon, size: 16, color: AppColors.primary),
-      ),
-    );
+  Widget _qtyBtn(IconData icon, VoidCallback onTap, Color color) {
+    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(8), child: Padding(padding: const EdgeInsets.all(6), child: Icon(icon, size: 16, color: color)));
   }
 }

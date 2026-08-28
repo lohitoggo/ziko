@@ -47,29 +47,47 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
     final userAsync = ref.watch(currentUserProvider);
     final areasAsync = ref.watch(activeAreasProvider);
 
+    final String cat = widget.business.category.toLowerCase();
+    final bool isSalon = cat == 'salon';
+    final bool isGrocery = cat == 'grocery';
+    final bool isMeat = cat == 'meat';
+    final bool isMedicine = cat == 'medicine';
+    final bool isTech = cat == 'electronics' || cat == 'tech';
+
+    final Color primaryColor = isSalon ? const Color(0xFFFFD700) : 
+                              (isGrocery ? const Color(0xFF00B251) : 
+                              (isMeat ? const Color(0xFFE11D48) : 
+                              (isMedicine ? const Color(0xFFFF0844) : 
+                              (isTech ? const Color(0xFF662D8C) : AppColors.primary))));
+
+    final bgColor = isSalon ? const Color(0xFF121214) : const Color(0xFFFFF8F4);
+    final cardColor = isSalon ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isSalon ? Colors.white : AppColors.charcoal;
+    final mutedTextColor = isSalon ? Colors.white70 : AppColors.muted;
+
     final displayImages = widget.business.bannerUrls.isNotEmpty 
         ? widget.business.bannerUrls 
         : (widget.business.logoUrl != null ? [widget.business.logoUrl!] : []);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F4),
+      backgroundColor: bgColor,
       body: Stack(
         children: [
           CustomScrollView(
             slivers: [
               // 1. Premium Image Carousel Header
               SliverAppBar(
-                expandedHeight: 250, // Back to premium height
+                expandedHeight: 250,
                 pinned: true,
                 automaticallyImplyLeading: false,
-                backgroundColor: Colors.white,
+                backgroundColor: isSalon ? Colors.black : Colors.white,
                 elevation: 0,
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
                     children: [
                       CarouselSlider(
                         options: CarouselOptions(
-                          height: 290, // Exactly match expandedHeight
+                          height: 290,
                           viewportFraction: 1.0,
                           autoPlay: false,
                           enableInfiniteScroll: displayImages.length > 1,
@@ -81,12 +99,11 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
                             imageUrl: url,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            placeholder: (c, u) => Container(color: Colors.grey.shade200),
-                            errorWidget: (c, u, e) => _bannerFallback(),
+                            placeholder: (c, u) => Container(color: isSalon ? Colors.black : Colors.grey.shade200),
+                            errorWidget: (c, u, e) => _bannerFallback(primaryColor),
                           ),
                         )).toList(),
                       ),
-                      // Image Counter
                       Positioned(
                         bottom: 20,
                         right: 20,
@@ -108,16 +125,12 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
                 title: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _circleAction(Icons.arrow_back_ios_new_rounded, () => Navigator.pop(context)),
+                    _circleAction(Icons.arrow_back_ios_new_rounded, () => Navigator.pop(context), isSalon),
                     Row(
                       children: [
-                        Consumer(builder: (context, ref, _) {
-                          // Heart Icon logic for Business could be added if needed, 
-                          // but usually heart is on specific items.
-                          return _circleAction(Icons.favorite_border_rounded, () {});
-                        }),
+                        _circleAction(Icons.favorite_border_rounded, () {}, isSalon),
                         const SizedBox(width: 12),
-                        _circleAction(Icons.share_outlined, () {}),
+                        _circleAction(Icons.share_outlined, () {}, isSalon),
                       ],
                     ),
                   ],
@@ -128,10 +141,10 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
               SliverToBoxAdapter(
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20), // Restored original padding
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,21 +155,21 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
                           Expanded(
                             child: Text(
                               widget.business.name,
-                              style: GoogleFonts.urbanist(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.charcoal),
+                              style: GoogleFonts.urbanist(fontSize: 24, fontWeight: FontWeight.w900, color: textColor),
                             ),
                           ),
-                          _statusBadge(widget.business.isOnline),
+                          _statusBadge(widget.business.isOnline, isSalon),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Text(
                         widget.business.description,
-                        style: GoogleFonts.urbanist(color: AppColors.muted, fontSize: 14, fontWeight: FontWeight.w500),
+                        style: GoogleFonts.urbanist(color: mutedTextColor, fontSize: 14, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 16),
                       Row(
                         children: [
-                          _infoTile(Icons.star_rounded, widget.business.avgRating.toStringAsFixed(1), AppColors.gold),
+                          _infoTile(Icons.star_rounded, widget.business.avgRating.toStringAsFixed(1), AppColors.gold, isSalon, textColor),
                           userAsync.when(
                             data: (user) => areasAsync.when(
                               data: (areasList) {
@@ -164,44 +177,47 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
                                 if (areas.isEmpty) return const SizedBox.shrink();
 
                                 final AreaModel area = areas.firstWhere(
-                                  (a) => a.id == user?.areaId, 
+                                  (a) => a.id == user?.areaId,
                                   orElse: () => areas.first,
                                 );
-                                final areaText ='${area.name}•${area.estimatedDeliveryMinutes} min';
+                                final areaText = isSalon ? 'Luxury Service' : '${area.name}•${area.estimatedDeliveryMinutes} min';
                                 return Row(
                                   children: [
-                                    _infoTile(Icons.access_time_filled_rounded, areaText, AppColors.softGreen),
-                                    _vDivider(),
-                                    _infoTile(Icons.delivery_dining_rounded, area.deliveryCharge == 0 ? 'FREE' : '₹${area.deliveryCharge.toInt()}', Colors.blue),
+                                    _infoTile(Icons.access_time_filled_rounded, areaText, isSalon ? primaryColor : AppColors.softGreen, isSalon, textColor),
+                                    if (!isSalon) ...[
+                                      _vDivider(isSalon),
+                                      _infoTile(Icons.delivery_dining_rounded, area.deliveryCharge == 0 ? 'FREE' : '₹${area.deliveryCharge.toInt()}', Colors.blue, isSalon, textColor),
+                                    ]
                                   ],
                                 );
                               },
-                              loading: () => const Text('...'),
-                              error: (_, _) => const Text('Error'),
+                              loading: () => const Text('...', style: TextStyle(color: Colors.grey)),
+                              error: (_, _) => const Text('Error', style: TextStyle(color: Colors.grey)),
                             ),
-                            loading: () => const Text('...'),
-                            error: (_, _) => const Text('Error'),
+                            loading: () => const Text('...', style: TextStyle(color: Colors.grey)),
+                            error: (_, _) => const Text('Error', style: TextStyle(color: Colors.grey)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      const Divider(height: 1),
+                      Divider(height: 1, color: isSalon ? Colors.white10 : Colors.grey.shade200),
                       const SizedBox(height: 16),
                       
                       // Search Menu
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
+                          color: isSalon ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: Colors.grey.shade200),
+                          border: Border.all(color: isSalon ? Colors.white10 : Colors.grey.shade200),
                         ),
                         child: TextField(
                           onChanged: (v) => setState(() => _searchQuery = v),
+                          style: TextStyle(color: textColor),
                           decoration: InputDecoration(
-                            hintText: 'Search in Items...',
+                            hintText: isSalon ? 'Search services...' : 'Search in Items...',
                             hintStyle: GoogleFonts.urbanist(color: Colors.grey, fontSize: 14),
-                            icon: const Icon(Icons.search_rounded, size: 20, color: AppColors.primary),
+                            icon: Icon(Icons.search_rounded, size: 20, color: primaryColor),
                             border: InputBorder.none,
                           ),
                         ),
@@ -214,16 +230,15 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
               // 4. Dynamic Category Chips
               itemsAsync.when(
                 data: (items) {
-                  // Dynamically extract unique categories from items
                   final categories = ['All', ...items.map((e) => e.category).toSet()];
-                  
+
                   return SliverPersistentHeader(
                     pinned: true,
                     delegate: _SliverAppBarDelegate(
                       minHeight: 60,
                       maxHeight: 60,
                       child: Container(
-                        color: const Color(0xFFFFF8F4), // Blend with background
+                        color: bgColor,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -236,14 +251,14 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
                                 label: Text(categories[i]),
                                 selected: isSelected,
                                 onSelected: (v) => setState(() => _selectedCategory = categories[i]),
-                                backgroundColor: Colors.white,
-                                selectedColor: AppColors.primary,
+                                backgroundColor: isSalon ? const Color(0xFF1E1E1E) : Colors.white,
+                                selectedColor: primaryColor,
                                 labelStyle: GoogleFonts.urbanist(
-                                  color: isSelected ? Colors.white : AppColors.charcoal,
+                                  color: isSelected ? (isSalon ? Colors.black : Colors.white) : textColor,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
                                 ),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey.shade200)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSelected ? Colors.transparent : (isSalon ? Colors.white10 : Colors.grey.shade200))),
                                 showCheckmark: false,
                               ),
                             );
@@ -269,7 +284,7 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
                   }).toList();
 
                   if (filteredItems.isEmpty) {
-                    return const SliverFillRemaining(child: Center(child: Text('No items found')));
+                    return SliverFillRemaining(child: Center(child: Text('No items found', style: TextStyle(color: textColor))));
                   }
 
                   return SliverPadding(
@@ -278,9 +293,9 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
                       delegate: SliverChildBuilderDelegate(
                         (ctx, i) => _CompactFoodCard(
                           item: filteredItems[i],
+                          isSalon: isSalon,
                           quantity: cartNotifier.quantityOf(filteredItems[i].id),
                           onAdd: () {
-                            final isSalon = widget.business.category.toLowerCase().contains('salon');
                             cartNotifier.addItem(filteredItems[i], isSalon: isSalon, onSalonLimit: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -314,13 +329,15 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
             ],
           ),
 
-          // 6. Floating Cart Bar (Universal Support)
+          // 6. Floating Cart Bar
           if (cart.isNotEmpty)
             Positioned(
               bottom: 20, left: 16, right: 16,
               child: _FloatingCheckoutBar(
                 itemCount: cartNotifier.totalItems,
                 totalAmount: cartNotifier.totalAmount,
+                isSalon: isSalon,
+                primaryColor: primaryColor,
               ),
             ),
         ],
@@ -328,22 +345,22 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
     );
   }
 
-  Widget _circleAction(IconData icon, VoidCallback onTap) {
+  Widget _circleAction(IconData icon, VoidCallback onTap, bool isSalon) {
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), shape: BoxShape.circle),
-        child: Icon(icon, color: AppColors.charcoal, size: 20),
+        decoration: BoxDecoration(color: isSalon ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.9), shape: BoxShape.circle),
+        child: Icon(icon, color: isSalon ? Colors.white : AppColors.charcoal, size: 20),
       ),
     );
   }
 
-  Widget _statusBadge(bool online) {
+  Widget _statusBadge(bool online, bool isSalon) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: online ? AppColors.softGreen.withValues(alpha: 0.1) : Colors.grey.shade100,
+        color: online ? AppColors.softGreen.withValues(alpha: 0.1) : (isSalon ? Colors.white10 : Colors.grey.shade100),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
@@ -353,22 +370,26 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
     );
   }
 
-  Widget _infoTile(IconData icon, String text, Color color) {
+  Widget _infoTile(IconData icon, String text, Color color, bool isSalon, Color textColor) {
     return Row(
       children: [
         Icon(icon, color: color, size: 16),
         const SizedBox(width: 4),
-        Text(text, style: GoogleFonts.urbanist(fontWeight: FontWeight.bold, fontSize: 13)),
+        Text(text, style: GoogleFonts.urbanist(fontWeight: FontWeight.bold, fontSize: 13, color: isSalon ? Colors.white : AppColors.charcoal)),
       ],
     );
   }
 
-  Widget _vDivider() => Container(height: 15, width: 1, color: Colors.grey.shade300, margin: const EdgeInsets.symmetric(horizontal: 12));
+  Widget _vDivider(bool isSalon) => Container(height: 15, width: 1, color: isSalon ? Colors.white10 : Colors.grey.shade300, margin: const EdgeInsets.symmetric(horizontal: 12));
 
-  Widget _bannerFallback() {
+  Widget _bannerFallback(Color primaryColor) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [Color(0xFFF45D27), Color(0xFFFF8A00)]),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [primaryColor.withValues(alpha: 0.8), primaryColor],
+        ),
       ),
       child: const Center(child: Icon(Icons.storefront_rounded, color: Colors.white70, size: 60)),
     );
@@ -380,22 +401,28 @@ class _CompactFoodCard extends StatelessWidget {
   final int quantity;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
+  final bool isSalon;
 
   const _CompactFoodCard({
     required this.item,
     required this.quantity,
     required this.onAdd,
     required this.onRemove,
+    this.isSalon = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final textColor = isSalon ? Colors.white : AppColors.charcoal;
+    final cardBg = isSalon ? const Color(0xFF1E1E1E) : Colors.white;
+    final primaryColor = isSalon ? const Color(0xFFFFD700) : AppColors.primary;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isSalon ? 0.2 : 0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -412,7 +439,6 @@ class _CompactFoodCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Item Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,12 +446,12 @@ class _CompactFoodCard extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(item.isVeg ? Icons.eco_rounded : Icons.set_meal_rounded, color: item.isVeg ? Colors.green : Colors.red, size: 16),
+                        Icon(isSalon ? Icons.auto_awesome_rounded : (item.isVeg ? Icons.eco_rounded : Icons.set_meal_rounded), color: isSalon ? primaryColor : (item.isVeg ? Colors.green : Colors.red), size: 16),
                         Consumer(builder: (context, ref, _) {
                           final isInWishlist = ref.watch(isInWishlistProvider(item.id)).value ?? false;
                           return IconButton(
-                            icon: Icon(isInWishlist ? Icons.favorite_rounded : Icons.favorite_border_rounded, 
-                                color: isInWishlist ? Colors.red : Colors.grey.shade400, size: 20),
+                            icon: Icon(isInWishlist ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                color: isInWishlist ? Colors.red : (isSalon ? Colors.white24 : Colors.grey.shade400), size: 20),
                             onPressed: () async {
                               final user = ref.read(supabaseUserProvider);
                               if (user != null) {
@@ -440,16 +466,16 @@ class _CompactFoodCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Text(item.name, style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.charcoal)),
+                    Text(item.name, style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w800, color: textColor)),
                     const SizedBox(height: 4),
-                    Text(item.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(item.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: isSalon ? Colors.white60 : Colors.grey)),
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Text('₹${item.finalPrice.toInt()}', style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w900)),
+                        Text('₹${item.finalPrice.toInt()}', style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w900, color: isSalon ? primaryColor : textColor)),
                         if (item.hasDiscount) ...[
                           const SizedBox(width: 8),
-                          Text('₹${item.price.toInt()}', style: const TextStyle(fontSize: 12, color: Colors.grey, decoration: TextDecoration.lineThrough)),
+                          Text('₹${item.price.toInt()}', style: TextStyle(fontSize: 12, color: isSalon ? Colors.white24 : Colors.grey, decoration: TextDecoration.lineThrough)),
                         ],
                       ],
                     ),
@@ -457,7 +483,6 @@ class _CompactFoodCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
-              // Image and Add Button
               Column(
                 children: [
                   Stack(
@@ -472,7 +497,7 @@ class _CompactFoodCard extends StatelessWidget {
                             imageUrl: item.imageUrl ?? '',
                             width: 110, height: 110,
                             fit: BoxFit.cover,
-                            errorWidget: (c, u, e) => Container(color: Colors.grey.shade100, child: const Icon(Icons.fastfood_rounded, color: Colors.grey)),
+                            errorWidget: (c, u, e) => Container(color: isSalon ? Colors.black : Colors.grey.shade100, child: const Icon(Icons.fastfood_rounded, color: Colors.grey)),
                           ),
                         ),
                       ),
@@ -482,26 +507,26 @@ class _CompactFoodCard extends StatelessWidget {
                           ? ElevatedButton(
                               onPressed: onAdd,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: AppColors.primary,
+                                backgroundColor: isSalon ? primaryColor : Colors.white,
+                                foregroundColor: isSalon ? Colors.black : AppColors.primary,
                                 elevation: 4,
                                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: Colors.grey.shade200)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: isSalon ? Colors.transparent : Colors.grey.shade200)),
                               ),
                               child: const Text('ADD', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
                             )
                           : Container(
                               decoration: BoxDecoration(
-                                color: AppColors.primary,
+                                color: primaryColor,
                                 borderRadius: BorderRadius.circular(10),
-                                boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 8)],
+                                boxShadow: [BoxShadow(color: primaryColor.withValues(alpha: 0.3), blurRadius: 8)],
                               ),
                               child: Row(
                                 children: [
-                                  IconButton(icon: const Icon(Icons.remove, color: Colors.white, size: 16), onPressed: onRemove, constraints: const BoxConstraints(minWidth: 32)),
-                                  Text('$quantity', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  IconButton(icon: Icon(Icons.remove, color: isSalon ? Colors.black : Colors.white, size: 16), onPressed: onRemove, constraints: const BoxConstraints(minWidth: 32)),
+                                  Text('$quantity', style: TextStyle(color: isSalon ? Colors.black : Colors.white, fontWeight: FontWeight.bold)),
                                   IconButton(
-                                    icon: const Icon(Icons.add, color: Colors.white, size: 16), 
+                                    icon: Icon(Icons.add, color: isSalon ? Colors.black : Colors.white, size: 16),
                                     onPressed: onAdd,
                                     constraints: const BoxConstraints(minWidth: 32)
                                   ),
@@ -525,7 +550,9 @@ class _CompactFoodCard extends StatelessWidget {
 class _FloatingCheckoutBar extends StatelessWidget {
   final int itemCount;
   final double totalAmount;
-  const _FloatingCheckoutBar({required this.itemCount, required this.totalAmount});
+  final bool isSalon;
+  final Color primaryColor;
+  const _FloatingCheckoutBar({required this.itemCount, required this.totalAmount, this.isSalon = false, required this.primaryColor});
 
   @override
   Widget build(BuildContext context) {
@@ -534,32 +561,32 @@ class _FloatingCheckoutBar extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         decoration: BoxDecoration(
-          color: AppColors.primary,
+          color: primaryColor,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
+          boxShadow: [BoxShadow(color: primaryColor.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
-                const Icon(Icons.shopping_basket_rounded, color: Colors.white, size: 24),
+                Icon(Icons.shopping_basket_rounded, color: isSalon ? Colors.black : Colors.white, size: 24),
                 const SizedBox(width: 15),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('$itemCount ITEMS', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
-                    Text('₹${totalAmount.toInt()}', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                    Text('$itemCount ITEMS', style: TextStyle(color: isSalon ? Colors.black54 : Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                    Text('₹${totalAmount.toInt()}', style: TextStyle(color: isSalon ? Colors.black : Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
                   ],
                 ),
               ],
             ),
             Row(
               children: [
-                Text('VIEW CART', style: GoogleFonts.urbanist(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)),
+                Text('VIEW CART', style: GoogleFonts.urbanist(color: isSalon ? Colors.black : Colors.white, fontWeight: FontWeight.w900, fontSize: 14)),
                 const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
+                Icon(Icons.arrow_forward_ios_rounded, color: isSalon ? Colors.black : Colors.white, size: 14),
               ],
             ),
           ],

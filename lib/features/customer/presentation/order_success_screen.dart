@@ -6,12 +6,30 @@ import 'order_tracking_screen.dart';
 
 class OrderSuccessScreen extends StatelessWidget {
   final String orderId;
-  const OrderSuccessScreen({super.key, required this.orderId});
+  final bool isSalon;
+  final String? category;
+  const OrderSuccessScreen({super.key, required this.orderId, this.isSalon = false, this.category});
 
   @override
   Widget build(BuildContext context) {
+    final String cat = category?.toLowerCase() ?? '';
+    final bool isGrocery = cat == 'grocery';
+    final bool isMeat = cat == 'meat';
+    final bool isMedicine = cat == 'medicine';
+    final bool isTech = cat == 'electronics' || cat == 'tech';
+
+    final Color primaryColor = isSalon ? const Color(0xFFFFD700) : 
+                              (isGrocery ? const Color(0xFF00B251) : 
+                              (isMeat ? const Color(0xFFE11D48) : 
+                              (isMedicine ? const Color(0xFFFF0844) : 
+                              (isTech ? const Color(0xFF662D8C) : AppColors.primary))));
+
+    final bgColor = isSalon ? const Color(0xFF121214) : const Color(0xFFFFF8F4);
+    final cardColor = isSalon ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isSalon ? Colors.white : AppColors.charcoal;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F4),
+      backgroundColor: bgColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -20,7 +38,6 @@ class OrderSuccessScreen extends StatelessWidget {
             children: [
               const Spacer(),
               
-              // 1. Success Animation/Icon
               TweenAnimationBuilder<double>(
                 duration: const Duration(milliseconds: 800),
                 tween: Tween(begin: 0.0, end: 1.0),
@@ -32,20 +49,20 @@ class OrderSuccessScreen extends StatelessWidget {
                       width: 140,
                       height: 140,
                       decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
+                        color: isSalon ? primaryColor.withValues(alpha: 0.1) : (isGrocery ? Colors.green.withValues(alpha: 0.1) : primaryColor.withValues(alpha: 0.1)),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.green.withValues(alpha: 0.15),
+                            color: primaryColor.withValues(alpha: 0.15),
                             blurRadius: 40,
                             offset: const Offset(0, 10),
                           ),
                         ],
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Icon(
                           Icons.check_circle_rounded,
-                          color: Colors.green,
+                          color: isSalon ? primaryColor : (isGrocery || isMeat || isMedicine || isTech ? primaryColor : Colors.green),
                           size: 90,
                         ),
                       ),
@@ -56,22 +73,23 @@ class OrderSuccessScreen extends StatelessWidget {
               
               const SizedBox(height: 40),
               
-              // 2. Title & Message
               Text(
-                'Woohoo! Order Placed!',
+                isSalon ? 'Luxury Booking Confirmed!' : 'Woohoo! Order Placed!',
                 style: GoogleFonts.urbanist(
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
-                  color: AppColors.charcoal,
+                  color: textColor,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
-                'Your order has been confirmed and is being prepared with love.',
+                isSalon 
+                  ? 'Your appointment has been scheduled. Prepare for a premium experience.' 
+                  : 'Your order has been confirmed and is being prepared with love.',
                 style: GoogleFonts.urbanist(
                   fontSize: 15,
-                  color: AppColors.muted,
+                  color: isSalon ? Colors.white70 : AppColors.muted,
                   fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
@@ -79,15 +97,14 @@ class OrderSuccessScreen extends StatelessWidget {
               
               const SizedBox(height: 40),
               
-              // 3. Order ID Card
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardColor,
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
+                      color: Colors.black.withValues(alpha: isSalon ? 0.2 : 0.04),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -96,7 +113,7 @@ class OrderSuccessScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      'ORDER ID',
+                      isSalon ? 'BOOKING ID' : 'ORDER ID',
                       style: GoogleFonts.urbanist(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -110,7 +127,7 @@ class OrderSuccessScreen extends StatelessWidget {
                       style: GoogleFonts.urbanist(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.charcoal,
+                        color: textColor,
                       ),
                     ),
                   ],
@@ -119,7 +136,6 @@ class OrderSuccessScreen extends StatelessWidget {
               
               const Spacer(),
               
-              // 4. Action Buttons
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -133,16 +149,17 @@ class OrderSuccessScreen extends StatelessWidget {
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: primaryColor,
+                    foregroundColor: isSalon ? Colors.black : Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     elevation: 12,
-                    shadowColor: AppColors.primary.withValues(alpha: 0.3),
+                    shadowColor: primaryColor.withValues(alpha: 0.3),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'TRACK MY ORDER',
+                        isSalon ? 'VIEW BOOKING STATUS' : 'TRACK MY ORDER',
                         style: GoogleFonts.urbanist(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
@@ -169,7 +186,7 @@ class OrderSuccessScreen extends StatelessWidget {
                   style: GoogleFonts.urbanist(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.muted,
+                    color: isSalon ? Colors.white60 : AppColors.muted,
                     letterSpacing: 0.5,
                   ),
                 ),

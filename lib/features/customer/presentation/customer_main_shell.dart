@@ -1,10 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'account_screen.dart';
 import 'customer_home_screen.dart';
+import '../providers/business_provider.dart';
 import 'order_history_screen.dart';
 import 'wishlist_screen.dart';
-import 'account_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 final customerTabControllerProvider = StateProvider<int>((ref) => 0);
@@ -15,6 +16,21 @@ class CustomerMainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedIndex = ref.watch(customerTabControllerProvider);
+    final selectedCat = ref.watch(selectedCategoryProvider);
+
+    // --- Dynamic Theme Selection ---
+    final isSalon = selectedCat == 'salon';
+    final isGrocery = selectedCat == 'grocery';
+    final isMeat = selectedCat == 'meat';
+    final isMedicine = selectedCat == 'medicine';
+    final isTech = selectedCat == 'electronics';
+
+    final Color activeColor = isSalon 
+        ? const Color(0xFFFFD700) 
+        : (isGrocery ? const Color(0xFF00B251) 
+            : (isMeat ? const Color(0xFFE11D48) 
+                : (isMedicine ? const Color(0xFFFF0844)
+                    : (isTech ? const Color(0xFF662D8C) : const Color(0xFFF45D27)))));
 
     final List<Widget> pages = [
       const CustomerHomeScreen(),
@@ -24,37 +40,36 @@ class CustomerMainShell extends ConsumerWidget {
     ];
 
     return Scaffold(
-      extendBody: true, // Crucial for the glass effect to show content behind
+      extendBody: true,
       body: pages[selectedIndex],
-      bottomNavigationBar: _buildModernBottomBar(context, ref),
+      bottomNavigationBar: _buildModernBottomBar(context, ref, activeColor, isSalon),
     );
   }
 
-  Widget _buildModernBottomBar(BuildContext context, WidgetRef ref) {
+  Widget _buildModernBottomBar(BuildContext context, WidgetRef ref, Color activeColor, bool isSalon) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.transparent,
-        border: Border(top: BorderSide(color: const Color(0xFFF45D27).withValues(alpha: 0.15), width: 1)),
+        border: Border(top: BorderSide(color: activeColor.withValues(alpha: 0.1), width: 1)),
       ),
       child: ClipRect(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20), // Stronger blur
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             padding: EdgeInsets.only(
               left: 10, right: 10, top: 12,
               bottom: MediaQuery.of(context).padding.bottom + 12,
             ),
             decoration: BoxDecoration(
-              // SUBTLE ORANGE TINT TO MATCH HEADER
-              color: const Color(0xFFF45D27).withValues(alpha: 0.08), 
+              color: isSalon ? Colors.black.withValues(alpha: 0.6) : activeColor.withValues(alpha: 0.05), 
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _navItem(ref, 0, Icons.home_outlined, Icons.home_rounded, 'Home'),
-                _navItem(ref, 1, Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Orders'),
-                _navItem(ref, 2, Icons.favorite_outline_rounded, Icons.favorite_rounded, 'Saved'),
-                _navItem(ref, 3, Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
+                _navItem(ref, 0, Icons.home_outlined, Icons.home_rounded, 'Home', activeColor, isSalon),
+                _navItem(ref, 1, Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Orders', activeColor, isSalon),
+                _navItem(ref, 2, Icons.favorite_outline_rounded, Icons.favorite_rounded, 'Saved', activeColor, isSalon),
+                _navItem(ref, 3, Icons.person_outline_rounded, Icons.person_rounded, 'Profile', activeColor, isSalon),
               ],
             ),
           ),
@@ -63,7 +78,7 @@ class CustomerMainShell extends ConsumerWidget {
     );
   }
 
-  Widget _navItem(WidgetRef ref, int index, IconData inactiveIcon, IconData activeIcon, String label) {
+  Widget _navItem(WidgetRef ref, int index, IconData inactiveIcon, IconData activeIcon, String label, Color activeColor, bool isSalon) {
     final selectedIndex = ref.watch(customerTabControllerProvider);
     final isActive = selectedIndex == index;
 
@@ -74,16 +89,17 @@ class CustomerMainShell extends ConsumerWidget {
         curve: Curves.fastOutSlowIn,
         padding: EdgeInsets.symmetric(horizontal: isActive ? 18 : 12, vertical: 10),
         decoration: BoxDecoration(
-          // GRADIENT PILL TO MATCH HEADER
-          gradient: isActive ? const LinearGradient(
+          gradient: isActive ? LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFF45D27), Color(0xFFFF8A00)],
+            colors: isSalon 
+                ? [const Color(0xFFD4AF37), const Color(0xFFFFD700)] 
+                : [activeColor, activeColor.withValues(alpha: 0.8)],
           ) : null,
           borderRadius: BorderRadius.circular(22),
           boxShadow: isActive ? [
             BoxShadow(
-              color: const Color(0xFFF45D27).withValues(alpha: 0.4),
+              color: activeColor.withValues(alpha: 0.3),
               blurRadius: 15,
               offset: const Offset(0, 8),
             )
@@ -94,7 +110,7 @@ class CustomerMainShell extends ConsumerWidget {
           children: [
             Icon(
               isActive ? activeIcon : inactiveIcon,
-              color: isActive ? Colors.white : const Color(0xFFF45D27).withValues(alpha: 0.6),
+              color: isActive ? (isSalon ? Colors.black : Colors.white) : activeColor.withValues(alpha: 0.5),
               size: isActive ? 24 : 22,
             ),
             if (isActive) ...[
@@ -102,7 +118,7 @@ class CustomerMainShell extends ConsumerWidget {
               Text(
                 label,
                 style: GoogleFonts.urbanist(
-                  color: Colors.white,
+                  color: isSalon ? Colors.black : Colors.white,
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                   letterSpacing: 0.5,

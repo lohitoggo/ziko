@@ -8,7 +8,8 @@ import 'admin_orders_tab.dart';
 import 'admin_dashboard_tab.dart';
 import 'admin_settings_tab.dart';
 import 'admin_riders_tab.dart';
-import 'admin_customers_tab.dart'; // Added import
+import 'admin_customers_tab.dart';
+import 'admin_grocery_tab.dart';
 
 class AdminHomeScreen extends ConsumerStatefulWidget {
   const AdminHomeScreen({super.key});
@@ -26,8 +27,9 @@ class _AdminHomeScreenState extends ConsumerState<AdminHomeScreen> {
       AdminDashboardTab(onTabChange: (index) => setState(() => _tabIndex = index)),
       const AdminShopsTab(),
       const AdminOrdersTab(),
+      const AdminGroceryTab(),
       const AdminRidersTab(),
-      const AdminCustomersTab(), // Added Customers tab
+      const AdminCustomersTab(),
       const AdminAreasTab(),
       const AdminSettingsTab(),
     ];
@@ -61,6 +63,7 @@ class _AdminHomeScreenState extends ConsumerState<AdminHomeScreen> {
           NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'ড্যাশবোর্ড'),
           NavigationDestination(icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront), label: 'দোকান'),
           NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'অর্ডার'),
+          NavigationDestination(icon: Icon(Icons.shopping_basket_outlined), selectedIcon: Icon(Icons.shopping_basket), label: 'গ্রোসারি'),
           NavigationDestination(icon: Icon(Icons.directions_bike_outlined), selectedIcon: Icon(Icons.directions_bike), label: 'রাইডার'),
           NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'কাস্টমার'),
           NavigationDestination(icon: Icon(Icons.location_on_outlined), selectedIcon: Icon(Icons.location_on), label: 'এলাকা'),

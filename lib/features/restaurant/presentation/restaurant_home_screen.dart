@@ -173,6 +173,7 @@ class _RestaurantHomeScreenState extends ConsumerState<RestaurantHomeScreen> {
         ];
 
         final isSalon = restaurant['category'] == 'salon';
+        final isGrocery = restaurant['category'] == 'grocery';
 
         return Scaffold(
           appBar: AppBar(title: Text(restaurant['name'] ?? 'জিকো বিজনেস')),
@@ -192,11 +193,15 @@ class _RestaurantHomeScreenState extends ConsumerState<RestaurantHomeScreen> {
           bottomNavigationBar: NavigationBar(
             selectedIndex: _tabIndex,
             onDestinationSelected: (i) => setState(() => _tabIndex = i),
-            destinations: const [
-              NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'ড্যাশবোর্ড'),
-              NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'অর্ডার'),
-              NavigationDestination(icon: Icon(Icons.restaurant_menu_outlined), selectedIcon: Icon(Icons.restaurant_menu), label: 'মেনু'),
-              NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'প্রোফাইল'),
+            destinations: [
+              const NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'ড্যাশবোর্ড'),
+              const NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'অর্ডার'),
+              NavigationDestination(
+                icon: Icon(isGrocery ? Icons.inventory_2_outlined : Icons.restaurant_menu_outlined), 
+                selectedIcon: Icon(isGrocery ? Icons.inventory_2 : Icons.restaurant_menu), 
+                label: isGrocery ? 'স্টক/আইটেম' : 'মেনু'
+              ),
+              const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'প্রোফাইল'),
             ],
           ),
         );
