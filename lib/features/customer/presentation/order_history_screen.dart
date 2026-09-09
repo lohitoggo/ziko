@@ -5,10 +5,15 @@ import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/order_provider.dart';
 import '../providers/business_provider.dart';
+import '../providers/cart_provider.dart';
+import '../data/food_item_model.dart';
 import '../data/review_model.dart';
 import '../../auth/providers/user_provider.dart';
+import '../../invoices/data/invoice_model.dart';
+import '../../invoices/presentation/customer_invoice_screen.dart';
 import '../../../core/theme/app_theme.dart';
 import 'order_tracking_screen.dart';
+import 'cart_screen.dart';
 
 class OrderHistoryScreen extends ConsumerStatefulWidget {
   const OrderHistoryScreen({super.key});
@@ -212,6 +217,70 @@ class _OrderCardRestored extends ConsumerWidget {
     );
   }
 
+  void _handleReOrder(BuildContext context, WidgetRef ref, String orderId, String businessId) async {
+    final orderItems = await ref.read(orderRepositoryProvider).getOrderItems(orderId);
+    if (orderItems.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('অর্ডারের আইটেম পাওয়া যায়নি')));
+      }
+      return;
+    }
+
+    final cartNotifier = ref.read(cartProvider.notifier);
+    final currentCart = ref.read(cartProvider);
+
+    // Check if cart has items from another business
+    if (currentCart.isNotEmpty && cartNotifier.restaurantId != null && cartNotifier.restaurantId != businessId) {
+      if (!context.mounted) return;
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('অন্য দোকানের কার্ট খালি করবেন?', style: GoogleFonts.urbanist(fontWeight: FontWeight.bold)),
+          content: Text('কার্টে অন্য প্রতিষ্ঠানের খাবার রয়েছে। রি-অর্ডার করতে কার্ট খালি করা হবে।', style: GoogleFonts.urbanist(fontSize: 13)),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('না')),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('হ্যাঁ, খালি করুন'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+      cartNotifier.clear();
+    }
+
+    // Add items to cart
+    for (var item in orderItems) {
+      final foodItem = FoodItemModel(
+        id: item['item_id']?.toString() ?? '',
+        restaurantId: businessId,
+        name: item['name']?.toString() ?? 'Food Item',
+        description: '',
+        category: 'food',
+        isVeg: true,
+        price: ((item['price'] ?? 0) as num).toDouble(),
+        discountPrice: 0.0,
+        stock: 100,
+        isAvailable: true,
+        avgRating: 4.5,
+      );
+      final qty = ((item['quantity'] ?? 1) as num).toInt();
+      for (int i = 0; i < qty; i++) {
+        cartNotifier.addItem(foodItem);
+      }
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('খাবারগুলো সফলভাবে কার্টে যোগ করা হয়েছে! 🛒'), backgroundColor: Colors.green),
+      );
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderId = order['orderId'].toString();
@@ -316,24 +385,56 @@ class _OrderCardRestored extends ConsumerWidget {
                   const Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey, size: 14),
                 ],
               ),
-              if (status == 'delivered') ...[
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Divider(height: 1),
-                ),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton.icon(
-                    onPressed: () => _showReviewDialog(context, ref, orderId, businessId),
-                    icon: const Icon(Icons.star_outline_rounded, size: 18),
-                    label: Text('RATE & REVIEW', style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 12)),
-                    style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFFF45D27),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Divider(height: 1),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () => _handleReOrder(context, ref, orderId, businessId),
+                      icon: const Icon(Icons.refresh_rounded, size: 16),
+                      label: Text('RE-ORDER', style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, fontSize: 11)),
+                      style: TextButton.styleFrom(foregroundColor: AppColors.softGreen),
                     ),
                   ),
-                ),
-              ],
+                  Container(width: 1, height: 20, color: Colors.grey.shade200),
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        final items = await ref.read(orderRepositoryProvider).getOrderItems(orderId);
+                        if (!context.mounted) return;
+                        final invoice = InvoiceModel.fromOrderMap(
+                          order,
+                          fetchedItems: items,
+                          user: ref.read(currentUserProvider).value != null 
+                              ? {'name': ref.read(currentUserProvider).value?.name, 'phone': ref.read(currentUserProvider).value?.phone}
+                              : null,
+                          merchant: businessAsync.value != null 
+                              ? {'name': businessAsync.value?.name, 'address': businessAsync.value?.address}
+                              : null,
+                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => CustomerInvoiceScreen(invoice: invoice)));
+                      },
+                      icon: const Icon(Icons.receipt_long_outlined, size: 16),
+                      label: Text('INVOICE', style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, fontSize: 11)),
+                      style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+                    ),
+                  ),
+                  if (status == 'delivered') ...[
+                    Container(width: 1, height: 20, color: Colors.grey.shade200),
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () => _showReviewDialog(context, ref, orderId, businessId),
+                        icon: const Icon(Icons.star_outline_rounded, size: 16),
+                        label: Text('REVIEW', style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, fontSize: 11)),
+                        style: TextButton.styleFrom(foregroundColor: const Color(0xFFF45D27)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),

@@ -9,6 +9,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../core/services/upload_provider.dart';
 import 'business_registration_screen.dart';
+import '../../auth/providers/user_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BusinessProfileTab extends ConsumerStatefulWidget {
   final Map<String, dynamic> restaurant;
@@ -94,12 +96,52 @@ class _BusinessProfileTabState extends ConsumerState<BusinessProfileTab> {
               await ref.read(supabaseAuthControllerProvider).signOut();
               if (context.mounted) {
                 Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => AuthWrapper()),
+                  MaterialPageRoute(builder: (context) => const AuthWrapper()),
                   (route) => false,
                 );
               }
             },
             child: const Text('হ্যাঁ', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('অ্যাকাউন্ট ডিলিট'),
+        content: const Text('আপনি কি নিশ্চিত যে আপনি অ্যাকাউন্ট ডিলিট করতে চান? আপনার স্থায়ী সমস্ত তথ্য মুছে ফেলা হবে।'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('না')),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final uid = widget.restaurant['owner_id'] ?? widget.restaurant['uid'];
+              if (uid != null) {
+                try {
+                  await ref.read(userRepositoryProvider).deleteAccount(uid.toString());
+                  if (context.mounted) {
+                    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AuthWrapper()),
+                      (route) => false,
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('অ্যাকাউন্ট সফলভাবে ডিলিট করা হয়েছে।')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('ডিলিট করতে সমস্যা হয়েছে: $e'), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              }
+            },
+            child: const Text('ডিলিট করুন', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -379,6 +421,16 @@ class _BusinessProfileTabState extends ConsumerState<BusinessProfileTab> {
                 icon: const Icon(Icons.logout),
                 label: const Text('লগআউট'),
                 style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showDeleteAccountDialog(context),
+                icon: const Icon(Icons.delete_forever),
+                label: const Text('অ্যাকাউন্ট ডিলিট করুন'),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade700, side: BorderSide(color: Colors.red.shade700)),
               ),
             ),
             const SizedBox(height: 50),

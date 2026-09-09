@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/notifications/notification_service.dart';
 import '../../../core/notifications/call_notification_service.dart';
@@ -94,6 +95,24 @@ class RiderRepository {
     if (status == 'delivered') {
       data['delivered_at'] = DateTime.now().toIso8601String();
       data['payment_status'] = 'paid';
+
+      // COD Cash Collection Tracking
+      try {
+        final orderDetails = await _supabase.from('orders').select('payment_method, total_amount, rider_id').eq('id', orderId).maybeSingle();
+        if (orderDetails != null && (orderDetails['payment_method'] ?? '').toString().toLowerCase() == 'cod') {
+          final double totalCash = ((orderDetails['total_amount'] ?? 0) as num).toDouble();
+          final String? riderId = orderDetails['rider_id'] ?? user.id;
+          if (riderId != null && totalCash > 0) {
+            final riderData = await _supabase.from('riders').select('cash_on_hand').eq('id', riderId).maybeSingle();
+            final double currentCash = riderData != null ? ((riderData['cash_on_hand'] ?? 0) as num).toDouble() : 0.0;
+            await _supabase.from('riders').update({
+              'cash_on_hand': currentCash + totalCash,
+            }).eq('id', riderId);
+          }
+        }
+      } catch (e) {
+        debugPrint('COD Cash Tracking Error: $e');
+      }
     }
     await _supabase.from('orders').update(data).eq('id', orderId);
 

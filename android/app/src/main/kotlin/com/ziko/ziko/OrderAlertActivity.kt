@@ -9,8 +9,6 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.WindowManager
@@ -43,9 +41,6 @@ class OrderAlertActivity : Activity() {
         val timeoutSeconds = intent.getIntExtra("timeoutSeconds", 30)
 
         buildZikoUi(customerName, amount, items, location, appointment, commission)
-        
-        // Sound and Vibration are now managed globally by NotificationServiceExtension
-        // to ensure they work even when the phone is unlocked/foreground.
 
         handler.postDelayed({ dismissAlert() }, timeoutSeconds * 1000L)
     }
@@ -78,16 +73,22 @@ class OrderAlertActivity : Activity() {
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(20), dp(60), dp(20), dp(40))
+            setPadding(dp(20), dp(50), dp(20), dp(35))
             background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(
                 Color.parseColor("#F45D27"), Color.parseColor("#FF8A00")
             ))
         }
         
+        val headerTitle = when {
+            type == "rider" -> "DELIVERY REQUEST 🛵"
+            appointment.isNotEmpty() -> "SALON APPOINTMENT 💇"
+            else -> "NEW ORDER 🛍️"
+        }
+
         val titleTv = TextView(this).apply {
-            text = if (appointment.isNotEmpty()) "ZIKO NEW APPOINTMENT" else "ZIKO NEW ORDER"
+            text = "ZIKO $headerTitle"
             setTextColor(Color.WHITE)
-            textSize = 22f
+            textSize = 20f
             setTypeface(null, android.graphics.Typeface.BOLD)
         }
         header.addView(titleTv)
@@ -96,38 +97,37 @@ class OrderAlertActivity : Activity() {
         // 2. DETAILS SECTION
         val details = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(32), dp(24), dp(24))
+            setPadding(dp(24), dp(24), dp(24), dp(20))
             val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
             layoutParams = lp
         }
 
         fun addRow(label: String, value: String, isPrice: Boolean = false, isAccent: Boolean = false) {
+            if (value.isEmpty()) return
             val tv = TextView(this).apply {
                 text = if (isPrice) "₹$value" else "$label: $value"
                 setTextColor(if (isPrice || isAccent) Color.parseColor("#F45D27") else Color.BLACK)
-                textSize = if (isPrice) 32f else 16f
-                setPadding(0, dp(8), 0, dp(8))
+                textSize = if (isPrice) 30f else 15f
+                setPadding(0, dp(6), 0, dp(6))
                 if (isPrice || isAccent) setTypeface(null, android.graphics.Typeface.BOLD)
             }
             details.addView(tv)
         }
 
-        addRow("Customer", customerName)
-        
-        // Show Appointment Date/Time if available (Salon)
-        if (appointment.isNotEmpty()) {
-            addRow("Appointment", appointment, isAccent = true)
+        if (type == "rider") {
+            // RIDER SPECIFIC CLEAN UI
+            if (commission.isNotEmpty()) addRow("Your Earnings", commission, isPrice = true)
+            addRow("Delivery Location", location)
+            addRow("Store / Customer", customerName)
+            if (items.isNotEmpty()) addRow("Items", items)
+        } else {
+            // MERCHANT / STORE SPECIFIC UI
+            addRow("Customer", customerName)
+            if (appointment.isNotEmpty()) addRow("Appointment Time", appointment, isAccent = true)
+            addRow("Order Total", amount, isPrice = true)
+            if (items.isNotEmpty()) addRow("Items", items)
+            if (location.isNotEmpty()) addRow("Address", location)
         }
-
-        addRow("Amount", amount, isPrice = true)
-        
-        // Show Commission if available (Rider)
-        if (commission.isNotEmpty()) {
-            addRow("Your Earning", "₹$commission", isAccent = true)
-        }
-
-        addRow("Items", items)
-        if (location.isNotEmpty()) addRow("Location", location)
 
         root.addView(details)
 
@@ -153,7 +153,7 @@ class OrderAlertActivity : Activity() {
         shape.setColor(Color.parseColor(colorHex))
         shape.cornerRadius = dp(12).toFloat()
         btn.background = shape
-        val lp = LinearLayout.LayoutParams(0, dp(56), weight)
+        val lp = LinearLayout.LayoutParams(0, dp(54), weight)
         lp.setMargins(dp(8), 0, dp(8), 0)
         btn.layoutParams = lp
         btn.setOnClickListener { onClick() }
@@ -196,8 +196,6 @@ class OrderAlertActivity : Activity() {
     private fun dismissAlert() {
         if (dismissed) return
         dismissed = true
-        
-        // STOP GLOBAL ALERT SOUND/VIBE
         NotificationServiceExtension.stopNativeAlert()
         finish()
     }

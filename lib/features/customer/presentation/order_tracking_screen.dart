@@ -319,7 +319,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
                           _buildItemsCard(order, isSalon: isSalon),
                           if (!isSalon && riderId != null) _buildRiderCard(riderId),
                           _buildBillCard(order),
-                          _buildSupportCard(business),
+                          _buildSupportCard(order, business),
                         ],
                       ),
                     ),
@@ -633,6 +633,17 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
   }
 
   Widget _buildBillCard(Map<String, dynamic> order) {
+    final double total = ((order['total_amount'] ?? order['totalAmount'] ?? 0) as num).toDouble();
+    final double del = ((order['delivery_charge'] ?? order['deliveryCharge'] ?? 0) as num).toDouble();
+    final double plat = ((order['platform_fee'] ?? order['platformFee'] ?? 0) as num).toDouble();
+    final double gst = ((order['gst'] ?? 0) as num).toDouble();
+
+    double subtotal = ((order['subtotal'] ?? 0) as num).toDouble();
+    if (subtotal == 0 && total > 0) {
+      final calc = total - del - plat - gst;
+      subtotal = calc < 0 ? total : calc;
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), 
       padding: const EdgeInsets.all(20),
@@ -642,11 +653,12 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
         children: [
           Text('BILL SUMMARY', style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1, color: Colors.grey)),
           const SizedBox(height: 12),
-          _priceRow('Subtotal', (order['subtotal'] ?? 0)),
-          _priceRow('Delivery Fee', order['delivery_charge']),
-          _priceRow('Platform Fee', order['platform_fee']),
+          _priceRow('Subtotal', subtotal),
+          _priceRow('Delivery Fee', del),
+          _priceRow('Platform Fee', plat),
+          if (gst > 0) _priceRow('GST / Taxes', gst),
           const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Divider(height: 1, thickness: 0.5)),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Grand Total', style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, fontSize: 15)), Text('₹${(order['total_amount'] as num).toInt()}', style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, fontSize: 18, color: AppColors.primary))]),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Grand Total', style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, fontSize: 15)), Text('₹${total.toInt()}', style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, fontSize: 18, color: AppColors.primary))]),
           const SizedBox(height: 15),
           Container(
             padding: const EdgeInsets.all(12),
@@ -664,7 +676,12 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
     );
   }
 
-  Widget _buildSupportCard(BusinessModel? business) {
+  Widget _buildSupportCard(Map<String, dynamic> order, BusinessModel? business) {
+    final status = order['status'] ?? 'placed';
+    final isPlaced = status == 'placed';
+    final isCancelled = status == 'cancelled' || status == 'rejected';
+    final isDelivered = status == 'delivered';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), 
       padding: const EdgeInsets.all(20),
@@ -672,7 +689,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('SUPPORT', style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1, color: Colors.grey)),
+          Text('HELP & ACTIONS', style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1, color: Colors.grey)),
           const SizedBox(height: 15),
           Row(
             children: [
@@ -680,6 +697,74 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
               const SizedBox(width: 12),
               Expanded(child: OutlinedButton.icon(onPressed: () => _makeCall(business?.ownerPhone), icon: const Icon(Icons.call_outlined, size: 16), label: const Text('CALL'), style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
             ],
+          ),
+
+          // Cancel option inside Support card
+          if (isPlaced) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showCancelDialog(context, ref, widget.orderId),
+                icon: const Icon(Icons.cancel_outlined, color: Colors.red, size: 16),
+                label: Text('CANCEL ORDER (অর্ডার বাতিল করুন)', style: GoogleFonts.urbanist(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.red.shade200),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ] else if (!isDelivered && !isCancelled) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12)),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded, color: Colors.grey, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('দোকানদার কাজ শুরু করায় অ্যাপ থেকে ক্যানসেল করা সম্ভব নয়।', style: GoogleFonts.urbanist(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showCancelDialog(BuildContext context, WidgetRef ref, String orderId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('অর্ডার বাতিল করুন', style: GoogleFonts.urbanist(fontWeight: FontWeight.bold, color: Colors.red)),
+        content: Text('আপনি কি নিশ্চিত যে আপনি এই অর্ডারটি বাতিল করতে চান? (অনলাইন পেমেন্ট করা থাকলে টাকা সরাসরি আপনার Ziko Wallet-এ পয়েন্ট হিসেবে জমা হবে)', style: GoogleFonts.urbanist(fontSize: 13)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('না')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ref.read(orderRepositoryProvider).cancelOrder(orderId);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('অর্ডার সফলভাবে বাতিল করা হয়েছে। ✅'), backgroundColor: Colors.green),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('হ্যাঁ, বাতিল করুন'),
           ),
         ],
       ),
@@ -690,7 +775,17 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
     if (order == null) return const SizedBox.shrink();
     final status = order['status'] ?? 'placed';
     final isDelivered = status == 'delivered';
+    final isCancelled = status == 'cancelled' || status == 'rejected';
     final isSalon = order['appointment_time'] != null;
+
+    if (isCancelled) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        width: double.infinity,
+        color: Colors.red.shade50,
+        child: Text('এই অর্ডারটি বাতিল করা হয়েছে', textAlign: TextAlign.center, style: GoogleFonts.urbanist(color: Colors.red, fontWeight: FontWeight.bold)),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 15, 20, 30),

@@ -42,29 +42,47 @@ class CustomerMainShell extends ConsumerWidget {
     return Scaffold(
       extendBody: true,
       body: pages[selectedIndex],
-      bottomNavigationBar: _buildModernBottomBar(context, ref, activeColor, isSalon),
+      bottomNavigationBar: _buildModernFloatingGlassBar(context, ref, activeColor, isSalon),
     );
   }
 
-  Widget _buildModernBottomBar(BuildContext context, WidgetRef ref, Color activeColor, bool isSalon) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        border: Border(top: BorderSide(color: activeColor.withValues(alpha: 0.1), width: 1)),
+  Widget _buildModernFloatingGlassBar(BuildContext context, WidgetRef ref, Color activeColor, bool isSalon) {
+    final navBgColor = isSalon 
+        ? Colors.black.withValues(alpha: 0.25) 
+        : Colors.white.withValues(alpha: 0.22);
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
       ),
-      child: ClipRect(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(35),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
           child: Container(
-            padding: EdgeInsets.only(
-              left: 10, right: 10, top: 12,
-              bottom: MediaQuery.of(context).padding.bottom + 12,
-            ),
+            height: 65,
             decoration: BoxDecoration(
-              color: isSalon ? Colors.black.withValues(alpha: 0.6) : activeColor.withValues(alpha: 0.05), 
+              color: navBgColor,
+              borderRadius: BorderRadius.circular(35),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isSalon ? 0.2 : 0.04),
+                  blurRadius: 25,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+              border: Border.all(
+                color: isSalon 
+                    ? const Color(0xFF666666).withValues(alpha: 0.3) 
+                    : Colors.white.withValues(alpha: 0.5),
+                width: 1.5,
+              ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _navItem(ref, 0, Icons.home_outlined, Icons.home_rounded, 'Home', activeColor, isSalon),
                 _navItem(ref, 1, Icons.receipt_long_outlined, Icons.receipt_long_rounded, 'Orders', activeColor, isSalon),
@@ -84,47 +102,66 @@ class CustomerMainShell extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () => ref.read(customerTabControllerProvider.notifier).state = index,
+      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.fastOutSlowIn,
-        padding: EdgeInsets.symmetric(horizontal: isActive ? 18 : 12, vertical: 10),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOutCubic,
+        padding: EdgeInsets.symmetric(
+          horizontal: isActive ? 18 : 12,
+          vertical: 10,
+        ),
         decoration: BoxDecoration(
           gradient: isActive ? LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: isSalon 
                 ? [const Color(0xFFD4AF37), const Color(0xFFFFD700)] 
-                : [activeColor, activeColor.withValues(alpha: 0.8)],
+                : [activeColor, activeColor.withValues(alpha: 0.85)],
           ) : null,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(25),
           boxShadow: isActive ? [
             BoxShadow(
-              color: activeColor.withValues(alpha: 0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            )
+              color: activeColor.withValues(alpha: 0.35),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
           ] : [],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isActive ? activeIcon : inactiveIcon,
-              color: isActive ? (isSalon ? Colors.black : Colors.white) : activeColor.withValues(alpha: 0.5),
-              size: isActive ? 24 : 22,
-            ),
-            if (isActive) ...[
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: GoogleFonts.urbanist(
-                  color: isSalon ? Colors.black : Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                  letterSpacing: 0.5,
-                ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+              child: Icon(
+                isActive ? activeIcon : inactiveIcon,
+                key: ValueKey(isActive),
+                color: isActive 
+                    ? (isSalon ? Colors.black : Colors.white) 
+                    : activeColor.withValues(alpha: 0.7),
+                size: 22,
               ),
-            ],
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOutCubic,
+              child: isActive
+                  ? Row(
+                      children: [
+                        const SizedBox(width: 8),
+                        Text(
+                          label,
+                          style: GoogleFonts.urbanist(
+                            color: isSalon ? Colors.black : Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
           ],
         ),
       ),

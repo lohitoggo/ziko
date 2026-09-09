@@ -135,8 +135,9 @@ class AdminRidersTab extends ConsumerWidget {
             itemCount: riders.length,
             itemBuilder: (context, index) {
               final r = riders[index];
-              final isActive = r['isActive'] ?? true;
+              final isActive = r['is_active'] ?? r['isActive'] ?? true;
               final vehicle = r['vehicleType'] ?? 'bike';
+              final cashOnHand = ((r['cash_on_hand'] ?? r['cashOnHand'] ?? 0) as num).toDouble();
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -193,9 +194,46 @@ class AdminRidersTab extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          _smallInfo(Icons.payments_outlined, 'Cash on Hand: ₹${cashOnHand.toInt()}'),
+                          if (cashOnHand > 0)
+                            InkWell(
+                              onTap: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('ক্যাশ জমা গ্রহণ'),
+                                    content: Text('রাইডার ${r['name']} এর কাছ থেকে সংগৃহীত ₹${cashOnHand.toInt()} টাকা জমা নেওয়া হয়েছে?'),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('না')),
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.pop(ctx, true),
+                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                                        child: const Text('হ্যাঁ, জমা গ্রহণ করুন'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true) {
+                                  await ref.read(adminRepositoryProvider).settleRiderCash(r['uid']);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ক্যাশ জমা সফলভাবে নথিভুক্ত করা হয়েছে! ✅'), backgroundColor: Colors.green));
+                                  }
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(8)),
+                                child: Text('Settle ₹${cashOnHand.toInt()}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900)),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
                           _smallInfo(Icons.verified_user, r['identityNo'] ?? 'No ID'),
                           _smallInfo(Icons.account_balance, r['bankDetails'] != null ? 'Bank Added' : 'No Bank'),
-                          _smallInfo(Icons.location_on, 'Area: ${r['areaId']?.toString().substring(0, 4)}'),
                         ],
                       ),
                     ],

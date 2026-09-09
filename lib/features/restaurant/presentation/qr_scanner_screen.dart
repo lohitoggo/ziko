@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../providers/restaurant_owner_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -82,6 +83,36 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
           MobileScanner(
             controller: controller,
             onDetect: _onDetect,
+            errorBuilder: (context, error, child) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.videocam_off_rounded, size: 60, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(
+                        'ক্যামেরা পারমিশন প্রয়োজন',
+                        style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'QR কোড স্ক্যান করতে ক্যামেরা পারমিশন এলাউ করুন।',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.urbanist(fontSize: 13, color: Colors.white70),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () => openAppSettings(),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                        child: const Text('সেটিংস খুলুন', style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
           // Scanner Overlay
           Center(

@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../core/services/upload_provider.dart';
+import '../../promos/presentation/admin_promos_screen.dart';
 
 class AdminSettingsTab extends ConsumerStatefulWidget {
   const AdminSettingsTab({super.key});
@@ -124,6 +125,44 @@ class _AdminSettingsTabState extends ConsumerState<AdminSettingsTab> {
                     value: isMaintenance,
                     activeThumbColor: Colors.red,
                     onChanged: (val) => ref.read(adminRepositoryProvider).toggleMaintenanceMode(val),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // 2.1 PROMO CODES
+                _buildSettingCard(
+                  title: 'কুপন ও প্রোমোকোড ম্যানেজমেন্ট',
+                  subtitle: 'নতুন প্রোমোকোড তৈরি করুন এবং ডিসকাউন্ট অফার দিন',
+                  trailing: IconButton(
+                    icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18, color: AppColors.primary),
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPromosScreen())),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // 2.2 PAYMENT GATEWAYS SWITCHES
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('পেমেন্ট গেটওয়ে কন্ট্রোল (Payment Options)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 6),
+                      Text('যে অপশনগুলো বন্ধ করবেন, সেগুলো কাস্টমার চেকআউটে দেখাবে না।', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                      const Divider(height: 24),
+
+                      _buildSwitchRow('ক্যাশ অন ডেলিভারি (COD)', 'enable_cod', settings?['enable_cod'] ?? true, ref),
+                      _buildSwitchRow('Ziko Wallet / Credits', 'enable_wallet', settings?['enable_wallet'] ?? true, ref),
+                      _buildSwitchRow('Razorpay Gateway', 'enable_razorpay', settings?['enable_razorpay'] ?? true, ref),
+                      _buildSwitchRow('Cashfree Gateway', 'enable_cashfree', settings?['enable_cashfree'] ?? true, ref),
+                      _buildSwitchRow('PhonePe PG', 'enable_phonepe', settings?['enable_phonepe'] ?? true, ref),
+                    ],
                   ),
                 ),
 
@@ -254,6 +293,23 @@ class _AdminSettingsTabState extends ConsumerState<AdminSettingsTab> {
                 },
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSwitchRow(String label, String key, bool currentVal, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          Switch(
+            value: currentVal,
+            activeThumbColor: AppColors.softGreen,
+            onChanged: (v) => ref.read(adminRepositoryProvider).updateSystemSettings({key: v}),
+          ),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/business_model.dart';
 import '../providers/business_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'customer_home_screen.dart';
@@ -75,9 +76,21 @@ class CategoryShopsScreen extends ConsumerWidget {
                 ),
               ),
               data: (allShops) {
-                final shops = categoryId == 'all' 
-                    ? allShops 
-                    : allShops.where((s) => s.category.trim().toLowerCase() == categoryId.trim().toLowerCase()).toList();
+                final catId = categoryId.trim().toLowerCase();
+                List<BusinessModel> shops;
+                
+                if (catId == 'top_rated') {
+                  shops = allShops.where((s) => s.avgRating >= 4.0).toList();
+                  shops.sort((a, b) => b.avgRating.compareTo(a.avgRating));
+                } else if (catId == 'best_offers' || catId == 'flash_sale') {
+                  shops = allShops.where((s) => s.isOnline).toList();
+                } else if (catId == 'new_stores') {
+                  shops = allShops.reversed.toList();
+                } else if (catId == 'all') {
+                  shops = allShops;
+                } else {
+                  shops = allShops.where((s) => s.category.trim().toLowerCase() == catId).toList();
+                }
 
                 if (shops.isEmpty) {
                   return Center(

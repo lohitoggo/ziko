@@ -125,15 +125,16 @@ class NotificationServiceExtension : INotificationServiceExtension {
         val requestCode = orderId.hashCode()
 
         // Formatting Title and Content for the heads-up notification (unlocked screen)
-        val isAppointment = appointment.isNotEmpty()
-        val title = if (isAppointment) "📅 নতুন অ্যাপয়েন্টমেন্ট: ₹$amount" else "🛍️ নতুন অর্ডার: ₹$amount"
-        
-        var bodyText = "$customerName - $items"
-        if (isAppointment) {
-            bodyText = "সময়: $appointment | $bodyText"
+        val isAppointment = appointment.isNotEmpty() && type != "rider"
+        val title = when {
+            type == "rider" -> "🛵 নতুন ডেলিভারি রিকোয়েস্ট: ₹$commission"
+            isAppointment -> "💇 নতুন সেলুন অ্যাপয়েন্টমেন্ট: ₹$amount"
+            else -> "🛍️ নতুন অর্ডার প্রাপ্তি: ₹$amount"
         }
-        if (commission.isNotEmpty() && type == "rider") {
-            bodyText = "আপনার আয়: ₹$commission | $bodyText"
+        
+        var bodyText = if (type == "rider") "লোকেশন: $location | $items" else "$customerName • $items"
+        if (isAppointment) {
+            bodyText = "বুকিং সময়: $appointment | $bodyText"
         }
 
         val acceptIntent = Intent(context, NotificationActionReceiver::class.java)

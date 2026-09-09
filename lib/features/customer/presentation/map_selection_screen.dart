@@ -45,6 +45,30 @@ class _MapSelectionScreenState extends State<MapSelectionScreen> {
         permission = await Geolocator.requestPermission();
       }
 
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('লোকেশন পারমিশন বন্ধ আছে। সেটিংস থেকে চালু করুন।'),
+              action: SnackBarAction(
+                label: 'SETTINGS',
+                onPressed: () => Geolocator.openAppSettings(),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('লোকেশন পারমিশন দেওয়া হয়নি')),
+          );
+        }
+        return;
+      }
+
       if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
         // High Accuracy Fetch
         final pos = await Geolocator.getCurrentPosition(

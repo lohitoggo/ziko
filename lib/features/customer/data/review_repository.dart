@@ -1,5 +1,10 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'review_model.dart';
+
+final reviewRepositoryProvider = Provider<ReviewRepository>((ref) {
+  return ReviewRepository();
+});
 
 class ReviewRepository {
   final SupabaseClient _supabase = Supabase.instance.client;

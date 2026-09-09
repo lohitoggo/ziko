@@ -61,6 +61,11 @@ class UserRepository {
     });
   }
 
+  Future<void> deleteAccount(String uid) async {
+    await _supabase.from('profiles').delete().eq('id', uid);
+    await _supabase.auth.signOut();
+  }
+
   Stream<AppUser?> watchUser(String uid) {
     return _supabase
         .from('profiles')

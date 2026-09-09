@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../providers/restaurant_owner_provider.dart';
 import '../../customer/providers/order_provider.dart';
+import '../../invoices/data/invoice_model.dart';
+import '../../invoices/presentation/vendor_thermal_invoice_screen.dart';
 import '../../../core/theme/app_theme.dart';
 
 class RestaurantOrdersTab extends ConsumerWidget {
@@ -201,7 +203,27 @@ class RestaurantOrdersTab extends ConsumerWidget {
                                   Text('₹${total.toInt()}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary)),
                                 ],
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () async {
+                                        final items = await ref.read(orderRepositoryProvider).getOrderItems(orderId);
+                                        if (!context.mounted) return;
+                                        final invoice = InvoiceModel.fromOrderMap(order, fetchedItems: items, merchant: business);
+                                        Navigator.push(context, MaterialPageRoute(builder: (_) => VendorThermalInvoiceScreen(invoice: invoice)));
+                                      },
+                                      icon: const Icon(Icons.print_outlined, size: 16),
+                                      label: const Text('প্রিন্ট স্লিপ (Thermal POS)'),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 10),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
                               _buildActionButtons(status, orderId, repo, context, isSalon: isSalon),
                             ],
                           ),

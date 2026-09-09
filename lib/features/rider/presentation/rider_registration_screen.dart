@@ -4,6 +4,8 @@ import '../providers/rider_provider.dart';
 import '../../auth/providers/user_provider.dart';
 import '../../auth/presentation/auth_wrapper.dart';
 import '../../auth/providers/area_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class RiderRegistrationScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? existingData;
@@ -21,6 +23,7 @@ class _RiderRegistrationScreenState extends ConsumerState<RiderRegistrationScree
   String _vehicleType = 'bike';
   List<String> _selectedAreaIds = [];
   bool _isLoading = false;
+  bool _acceptedTerms = false;
 
   @override
   void initState() {
@@ -58,6 +61,11 @@ class _RiderRegistrationScreenState extends ConsumerState<RiderRegistrationScree
       return;
     }
 
+    if (!_acceptedTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('অনুগ্রহ করে Rider Agreement-এ সম্মত হন'), backgroundColor: Colors.orange));
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -70,6 +78,7 @@ class _RiderRegistrationScreenState extends ConsumerState<RiderRegistrationScree
         'area_id': _selectedAreaIds.first, // Primary area for legacy support
         'identity_no': _identityCtrl.text.trim(),
         'bank_details': _bankCtrl.text.trim(),
+        'accepted_terms_at': DateTime.now().toIso8601String(),
         'status': 'pending',
         'is_active': true,
       };
@@ -158,7 +167,35 @@ class _RiderRegistrationScreenState extends ConsumerState<RiderRegistrationScree
             TextField(controller: _identityCtrl, decoration: const InputDecoration(labelText: 'আধার/এনআইডি নম্বর *')),
             const SizedBox(height: 16),
             TextField(controller: _bankCtrl, decoration: const InputDecoration(labelText: 'ব্যাংক ডিটেইলস (Account/UPI)')),
-            const SizedBox(height: 40),
+            const SizedBox(height: 20),
+
+            // Rider Legal Agreement Checkbox
+            Row(
+              children: [
+                Checkbox(
+                  value: _acceptedTerms,
+                  activeColor: AppColors.primary,
+                  onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => launchUrl(Uri.parse('https://zikoapp.online/terms-and-conditions'), mode: LaunchMode.externalApplication),
+                    child: RichText(
+                      text: TextSpan(
+                        text: 'আমি Ziko-র ',
+                        style: TextStyle(color: Colors.grey.shade800, fontSize: 12),
+                        children: const [
+                          TextSpan(text: 'Rider Agreement', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                          TextSpan(text: ' এবং ডেলিভারি নীতিমালায় সম্মত আছি।'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 30),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

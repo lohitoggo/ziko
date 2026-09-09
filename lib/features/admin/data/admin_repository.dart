@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminRepository {
@@ -91,6 +92,10 @@ class AdminRepository {
     // Check both tables to be sure
     await _supabase.from('profiles').update({'is_active': !isBlocked}).eq('id', uid);
     await _supabase.from('riders').update({'is_active': !isBlocked}).eq('id', uid);
+  }
+
+  Future<void> settleRiderCash(String riderUid) async {
+    await _supabase.from('riders').update({'cash_on_hand': 0.0}).eq('id', riderUid);
   }
 
   Future<void> updateUserDetails(String uid, Map<String, dynamic> data) async {
@@ -195,16 +200,22 @@ class AdminRepository {
 
   Future<void> updateSystemSettings(Map<String, dynamic> settings) async {
     try {
-      await _supabase.from('settings').upsert({
-        'id': 'global',
-        if (settings['platformFee'] != null) 'platform_fee': settings['platformFee'],
-        if (settings['gstPercentage'] != null) 'gst_percentage': settings['gstPercentage'],
-        if (settings['promoBannerUrl'] != null) 'promo_banner_url': settings['promoBannerUrl'],
-        if (settings['banner_urls'] != null) 'banner_urls': settings['banner_urls'],
-        if (settings['announcement'] != null) 'announcement': settings['announcement'],
+      final Map<String, dynamic> dataToSave = {'id': 'global'};
+      settings.forEach((key, value) {
+        if (key == 'platformFee') {
+          dataToSave['platform_fee'] = value;
+        } else if (key == 'gstPercentage') {
+          dataToSave['gst_percentage'] = value;
+        } else if (key == 'promoBannerUrl') {
+          dataToSave['promo_banner_url'] = value;
+        } else {
+          dataToSave[key] = value;
+        }
       });
+
+      await _supabase.from('settings').upsert(dataToSave);
     } catch (e) {
-      print('Update settings error: $e');
+      debugPrint('Update settings error: $e');
       rethrow;
     }
   }

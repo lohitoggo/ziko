@@ -76,7 +76,7 @@ class AdminCustomersTab extends ConsumerWidget {
             itemCount: customers.length,
             itemBuilder: (context, index) {
               final c = customers[index];
-              final isActive = c['isActive'] ?? true;
+              final isActive = c['is_active'] ?? c['isActive'] ?? true;
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),

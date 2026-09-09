@@ -8,6 +8,7 @@ import '../../auth/presentation/auth_wrapper.dart';
 import '../../auth/providers/area_provider.dart';
 import '../../../core/services/upload_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BusinessRegistrationScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? existingData;
@@ -38,6 +39,7 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
   List<String> _existingBanners = [];
   List<String> _selectedAreaIds = [];
   bool _isLoading = false;
+  bool _acceptedTerms = false;
 
   @override
   void initState() {
@@ -103,6 +105,11 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
       return;
     }
 
+    if (!_acceptedTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('অনুগ্রহ করে Terms and Conditions এ সম্মত হন'), backgroundColor: Colors.orange));
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -142,6 +149,7 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
         'closing_time_2': _closing2Ctrl.text.trim(),
         'has_double_shift': _hasDoubleShift,
         'off_day': _offDay,
+        'accepted_terms_at': DateTime.now().toIso8601String(),
         'status': 'pending',
         'is_online': false,
       };
@@ -404,8 +412,35 @@ class _BusinessRegistrationScreenState extends ConsumerState<BusinessRegistratio
             TextField(controller: _descCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'বিবরণ (Shop Description)')),
             const SizedBox(height: 12),
             TextField(controller: _addressCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'দোকানের পুরো ঠিকানা *')),
-            
-            const SizedBox(height: 40),
+            const SizedBox(height: 20),
+
+            // Vendor Legal Agreement Checkbox
+            Row(
+              children: [
+                Checkbox(
+                  value: _acceptedTerms,
+                  activeColor: AppColors.primary,
+                  onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => launchUrl(Uri.parse('https://zikoapp.online/terms-and-conditions'), mode: LaunchMode.externalApplication),
+                    child: RichText(
+                      text: TextSpan(
+                        text: 'আমি Ziko-র ',
+                        style: TextStyle(color: Colors.grey.shade800, fontSize: 12),
+                        children: const [
+                          TextSpan(text: 'Merchant Agreement', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                          TextSpan(text: ' এবং কমিশন পলিসিতে সম্মত আছি।'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 30),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

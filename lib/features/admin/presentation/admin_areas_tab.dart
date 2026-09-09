@@ -128,7 +128,7 @@ class AdminAreasTab extends ConsumerWidget {
             itemCount: areas.length,
             itemBuilder: (context, index) {
               final area = areas[index];
-              final isActive = area['status'] == 'active';
+              final isActive = area['is_active'] ?? area['isActive'] ?? true;
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(

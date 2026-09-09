@@ -56,6 +56,51 @@ class OrderRepository {
   }
 
   // =========================
+  // Cancel Order (Customer)
+  // =========================
+  Future<void> cancelOrder(String orderId, {String? reason}) async {
+    final orderData = await _supabase.from('orders').select().eq('id', orderId).maybeSingle();
+    if (orderData == null) return;
+
+    final status = orderData['status'] ?? 'placed';
+    if (status != 'placed') {
+      throw Exception('দোকানদার কাজ শুরু করে দেওয়ায় এই অর্ডারটি আর বাতিল করা সম্ভব নয়।');
+    }
+
+    try {
+      await _supabase.from('orders').update({
+        'status': 'cancelled',
+        'cancellation_reason': reason ?? 'Cancelled by Customer',
+      }).eq('id', orderId);
+    } catch (e) {
+      // Fallback if cancellation_reason column does not exist yet in Postgres
+      await _supabase.from('orders').update({
+        'status': 'cancelled',
+      }).eq('id', orderId);
+    }
+
+    // Auto Refund if paid
+    final paymentStatus = orderData['payment_status'] ?? 'pending';
+    final customerUid = orderData['customer_id'];
+    final total = ((orderData['total_amount'] ?? 0) as num).toDouble();
+
+    if ((paymentStatus == 'paid' || orderData['payment_method'] == 'wallet') && customerUid != null && total > 0) {
+      try {
+        await _supabase.from('wallet_transactions').insert({
+          'user_id': customerUid,
+          'amount': total,
+          'type': 'credit',
+          'title': 'অর্ডার ক্যানসেলেশন রিফান্ড',
+          'description': 'অর্ডার ক্যানসেল হওয়ায় ব্যালেন্স রিফান্ড হয়েছে',
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      } catch (e) {
+        debugPrint('Wallet refund error: $e');
+      }
+    }
+  }
+
+  // =========================
   // Place Order
   // =========================
   Future<String> placeOrder({
@@ -151,7 +196,7 @@ class OrderRepository {
                     'amount': totalAmount.toString(),
                     'customerName': realCustomerName,
                     'items': itemsList, 
-                    'appointment': appointmentTime,
+                    'appointment': appointmentTime ?? '',
                     'type': 'owner',
                     'timeoutSeconds': 30,
                   },

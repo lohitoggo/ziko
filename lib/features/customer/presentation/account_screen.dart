@@ -17,7 +17,10 @@ import 'saved_addresses_screen.dart';
 import 'wishlist_screen.dart';
 import '../../support/presentation/support_chat_screen.dart';
 import '../../maps/presentation/google_routing_test_screen.dart';
+import '../../wallet/providers/wallet_provider.dart';
+import '../../wallet/presentation/wallet_screen.dart';
 import 'package:flutter/foundation.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
@@ -180,27 +183,34 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           ),
 
           // 2. Stats Section
-          Transform.translate(
-            offset: const Offset(0, -25),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10))],
+          Builder(
+            builder: (context) {
+              final walletAsync = ref.watch(userWalletBalanceProvider(user.uid));
+              final walletText = walletAsync.maybeWhen(data: (bal) => '₹${bal.toInt()}', orElse: () => '₹0');
+
+              return Transform.translate(
+                offset: const Offset(0, -25),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10))],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _statItem('TOTAL ORDERS', ordersAsync.maybeWhen(data: (o) => o.length.toString(), orElse: () => '0')),
+                        Container(width: 1, height: 30, color: Colors.grey.shade100),
+                        _statItem('ZIKO CREDITS', walletText, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => WalletScreen(userId: user.uid)))),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _statItem('TOTAL ORDERS', ordersAsync.maybeWhen(data: (o) => o.length.toString(), orElse: () => '0')),
-                    Container(width: 1, height: 30, color: Colors.grey.shade100),
-                    _statItem('ZIKO CREDITS', '₹0.00'),
-                  ],
-                ),
-              ),
-            ),
+              );
+            },
           ),
 
           // 3. Menu Items
@@ -214,6 +224,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 _menuTile(Icons.map_outlined, 'Saved Addresses', 'Quick access to your locations', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SavedAddressesScreen()))),
                 _menuTile(Icons.help_outline_rounded, 'Help Center', '24/7 Support for your orders', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportChatScreen()))),
                 
+                // Legal & Policy Pages
+                _menuTile(Icons.description_outlined, 'Terms & Conditions', 'Read our terms of service', () => _launchUrl('https://zikoapp.online/terms-and-conditions')),
+                _menuTile(Icons.privacy_tip_outlined, 'Privacy Policy', 'How we handle your data', () => _launchUrl('https://zikoapp.online/privacy-policy')),
+                _menuTile(Icons.assignment_return_outlined, 'Refund & Cancellation', 'Know our refund policies', () => _launchUrl('https://zikoapp.online/refund-cancellation')),
+                _menuTile(Icons.contact_support_outlined, 'Contact Us', 'Get in touch with LK Enterprise', () => _launchUrl('https://zikoapp.online/contact')),
+
                 const SizedBox(height: 24),
                 InkWell(
                   onTap: () => _showLogoutDialog(context),
@@ -223,6 +239,16 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                     decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.red.shade100)),
                     alignment: Alignment.center,
                     child: Text('SIGN OUT', style: GoogleFonts.urbanist(color: Colors.red.shade400, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 13)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () => _showDeleteAccountDialog(context, user.uid),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    alignment: Alignment.center,
+                    child: Text('DELETE ACCOUNT', style: GoogleFonts.urbanist(color: Colors.red.shade700, fontWeight: FontWeight.w800, letterSpacing: 1.5, fontSize: 12)),
                   ),
                 ),
 
@@ -239,14 +265,32 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     );
   }
 
-  Widget _statItem(String label, String value) {
-    return Column(
-      children: [
-        Text(value, style: GoogleFonts.urbanist(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.charcoal)),
-        const SizedBox(height: 4),
-        Text(label, style: GoogleFonts.urbanist(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey.shade400, letterSpacing: 1)),
-      ],
+  Widget _statItem(String label, String value, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          children: [
+            Text(value, style: GoogleFonts.urbanist(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.charcoal)),
+            const SizedBox(height: 4),
+            Text(label, style: GoogleFonts.urbanist(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey.shade400, letterSpacing: 1)),
+          ],
+        ),
+      ),
     );
+  }
+
+  Future<void> _launchUrl(String urlString) async {
+    final Uri uri = Uri.parse(urlString);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open $urlString')),
+        );
+      }
+    }
   }
 
   Widget _menuTile(IconData icon, String title, String subtitle, VoidCallback onTap) {
@@ -267,7 +311,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               Container(
                 height: 50, width: 50,
                 decoration: BoxDecoration(color: const Color(0xFFF45D27).withValues(alpha: 0.06), borderRadius: BorderRadius.circular(16)),
-                child: const Icon(Icons.auto_awesome_mosaic_rounded, color: Color(0xFFF45D27), size: 24),
+                child: Icon(icon, color: const Color(0xFFF45D27), size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -401,18 +445,16 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                       if (otpController.text.length < 4 && otpController.text.length < 6) return;
                       setModalState(() => isVerifying = true);
                       
+                      final messenger = ScaffoldMessenger.of(context);
+                      final nav = Navigator.of(context);
                       final success = await authService.verifyOtp(otpController.text);
                       if (success) {
                         ref.invalidate(currentUserProvider);
-                        if (mounted) Navigator.pop(context);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mobile number verified successfully! ✅'), backgroundColor: Colors.green));
-                        }
+                        messenger.showSnackBar(const SnackBar(content: Text('Mobile number verified successfully! ✅'), backgroundColor: Colors.green));
+                        nav.pop();
                       } else {
                         setModalState(() => isVerifying = false);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid OTP. Please try again.'), backgroundColor: Colors.redAccent));
-                        }
+                        messenger.showSnackBar(const SnackBar(content: Text('Invalid OTP. Please try again.'), backgroundColor: Colors.redAccent));
                       }
                     }
                   },
@@ -445,6 +487,43 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 0),
             child: Text('LOGOUT', style: GoogleFonts.urbanist(color: Colors.white, fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context, String uid) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Text('Delete Account?', style: GoogleFonts.urbanist(fontWeight: FontWeight.w900, color: Colors.red.shade700)),
+        content: Text('This action is permanent and cannot be undone. All your profile data and saved details will be deleted.', style: GoogleFonts.urbanist(fontWeight: FontWeight.w500)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('CANCEL', style: GoogleFonts.urbanist(color: Colors.grey, fontWeight: FontWeight.w900))),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+              try {
+                await ref.read(userRepositoryProvider).deleteAccount(uid);
+                if (context.mounted) {
+                  Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const AuthWrapper()), (route) => false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Account deleted successfully.')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to delete account: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 0),
+            child: Text('DELETE', style: GoogleFonts.urbanist(color: Colors.white, fontWeight: FontWeight.w900)),
           ),
         ],
       ),

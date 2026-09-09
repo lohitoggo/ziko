@@ -15,6 +15,7 @@ import '../../../core/theme/app_theme.dart';
 import 'business_details_screen.dart';
 import 'item_details_screen.dart';
 import 'cart_screen.dart';
+import 'order_history_screen.dart';
 import 'customer_main_shell.dart';
 import 'category_shops_screen.dart';
 import '../../grocery/presentation/grocery_home_screen.dart';
@@ -238,29 +239,17 @@ class CustomerHomeScreen extends ConsumerWidget {
                                const SizedBox(height: 10),
                              ],
 
-                             // 3. SALON SECTION
+                             // 3. SALON SECTION (Default Background for All Tab)
                              if (shops.any((s) => s.category == 'salon')) ...[
-                               Container(
-                                 margin: const EdgeInsets.symmetric(vertical: 15),
-                                 padding: const EdgeInsets.symmetric(vertical: 20),
-                                 decoration: BoxDecoration(
-                                   color: const Color(0xFF0F0F0F),
-                                   borderRadius: BorderRadius.circular(30),
-                                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20)],
-                                 ),
-                                 child: Column(
-                                   children: [
-                                     _buildSectionHeader(context, 'Premium Salons 💇', () {
-                                       ref.read(selectedCategoryProvider.notifier).state = 'salon';
-                                     }, Colors.white, const Color(0xFFFFD700)),
-                                     _HorizontalShopList(shops: shops.where((s) => s.category == 'salon').toList(), isSalon: true),
+                               _buildSectionHeader(context, 'Premium Salons 💇', () {
+                                 ref.read(selectedCategoryProvider.notifier).state = 'salon';
+                               }, textColor, const Color(0xFFFFD700)),
+                               _HorizontalShopList(shops: shops.where((s) => s.category == 'salon').toList(), isSalon: true),
 
-                                     const SizedBox(height: 10),
-                                     _buildSectionHeader(context, 'Luxury Salon Services ✨', null, Colors.white, const Color(0xFFFFD700)),
-                                     _RecommendedItemsList(category: 'salon', isSalon: true),
-                                   ],
-                                 ),
-                               ),
+                               const SizedBox(height: 10),
+                               _buildSectionHeader(context, 'Luxury Salon Services ✨', null, textColor, const Color(0xFFFFD700)),
+                               _RecommendedItemsList(category: 'salon', isSalon: true),
+                               const SizedBox(height: 10),
                              ],
 
                              // 4. MEAT SECTION
@@ -654,21 +643,37 @@ class _HorizontalCategories extends ConsumerWidget {
 
 class _QuickActionsSection extends StatelessWidget {
   final bool isSalon;
-  const _QuickActionsSection({this.isSalon = false});
+  const _QuickActionsSection({super.key, this.isSalon = false});
+
+  void _handleActionTap(BuildContext context, String id) {
+    if (id == 'order_again') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
+    } else if (id == 'best_offers') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoryShopsScreen(categoryId: 'best_offers', categoryName: 'Best Offers & Discounts')));
+    } else if (id == 'top_rated') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoryShopsScreen(categoryId: 'top_rated', categoryName: 'Top Rated Stores (4.0+)')));
+    } else if (id == 'new_stores') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoryShopsScreen(categoryId: 'new_stores', categoryName: 'Newly Added Stores')));
+    } else if (id == 'flash_sale') {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoryShopsScreen(categoryId: 'flash_sale', categoryName: 'Flash Sale & Deals')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final actions = [
-      {'label': 'Order Again', 'icon': Icons.history_rounded, 'color': Colors.blue},
-      {'label': 'Best Offers', 'icon': Icons.local_offer_rounded, 'color': Colors.orange},
-      {'label': 'Top Rated', 'icon': Icons.star_rounded, 'color': AppColors.gold},
-      {'label': 'New Stores', 'icon': Icons.storefront_rounded, 'color': Colors.purple},
-      {'label': 'Flash Sale', 'icon': Icons.bolt_rounded, 'color': Colors.red},
+      {'id': 'order_again', 'label': 'Order Again', 'icon': Icons.history_rounded, 'color': Colors.blue},
+      {'id': 'best_offers', 'label': 'Best Offers', 'icon': Icons.local_offer_rounded, 'color': Colors.orange},
+      {'id': 'top_rated', 'label': 'Top Rated', 'icon': Icons.star_rounded, 'color': AppColors.gold},
+      {'id': 'new_stores', 'label': 'New Stores', 'icon': Icons.storefront_rounded, 'color': Colors.purple},
+      {'id': 'flash_sale', 'label': 'Flash Sale', 'icon': Icons.bolt_rounded, 'color': Colors.red},
     ];
     return Container(height: 85, margin: const EdgeInsets.symmetric(vertical: 2), child: ListView.builder(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 20), itemCount: actions.length, itemBuilder: (context, index) {
       final action = actions[index]; final color = action['color'] as Color;
       final labelColor = isSalon ? Colors.white : AppColors.charcoal;
+      final id = action['id'] as String;
 
-      return Container(width: 75, margin: const EdgeInsets.only(right: 10), child: InkWell(onTap: () {}, borderRadius: BorderRadius.circular(18), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      return Container(width: 75, margin: const EdgeInsets.only(right: 10), child: InkWell(onTap: () => _handleActionTap(context, id), borderRadius: BorderRadius.circular(18), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: color.withValues(alpha: isSalon ? 0.15 : 0.08), borderRadius: BorderRadius.circular(15), border: Border.all(color: color.withValues(alpha: 0.2), width: 1.0)), child: Icon(action['icon'] as IconData, color: color, size: 22)),
         const SizedBox(height: 6),
         Text(action['label'] as String, textAlign: TextAlign.center, style: GoogleFonts.urbanist(fontSize: 9, fontWeight: FontWeight.w800, color: labelColor)),

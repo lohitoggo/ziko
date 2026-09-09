@@ -1,23 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/cart_provider.dart';
 import '../providers/order_provider.dart';
+import '../providers/business_provider.dart';
 import '../data/business_model.dart';
-import '../../rider/providers/rider_provider.dart';
 import '../../auth/providers/user_provider.dart';
 import '../../auth/providers/area_provider.dart';
 import '../../auth/data/area_model.dart';
 import '../../admin/providers/admin_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/payment/payment_service.dart';
-import '../../auth/data/phone_auth_service.dart';
 import 'order_success_screen.dart';
-import 'saved_addresses_screen.dart';
 import '../providers/address_provider.dart';
 import '../data/address_model.dart';
+import '../../wallet/providers/wallet_provider.dart';
+import '../../promos/providers/promo_provider.dart';
+import '../../promos/data/promo_model.dart';
 import 'package:intl/intl.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
@@ -38,6 +37,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   final _landmarkCtrl = TextEditingController();
   final _pinCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  final _promoCtrl = TextEditingController();
+  PromoCode? _appliedPromo;
 
   void _updateAddressFields(AddressModel addr) {
     setState(() {
@@ -50,9 +51,38 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     });
   }
 
+  void _applyPromoCode(double subtotal) {
+    final codeStr = _promoCtrl.text.trim().toUpperCase();
+    if (codeStr.isEmpty) return;
+
+    final promosAsync = ref.read(allPromoCodesProvider);
+    final list = promosAsync.value ?? [];
+
+    final found = list.firstWhere(
+      (p) => p.code == codeStr && p.isActive,
+      orElse: () => PromoCode(id: '', code: '', discountType: 'flat', discountValue: 0, isActive: false),
+    );
+
+    if (found.code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('অবৈধ বা নিষ্ক্রিয় কুপন কোড'), backgroundColor: Colors.red));
+      return;
+    }
+
+    if (subtotal < found.minOrderAmount) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('এই কুপনটি ব্যবহার করতে ন্যূনতম ₹${found.minOrderAmount.toInt()} টাকার অর্ডার প্রয়োজন'), backgroundColor: Colors.orange));
+      return;
+    }
+
+    setState(() {
+      _appliedPromo = found;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('কুপন ${found.code} সফলভাবে প্রয়োগ করা হয়েছে! 🎉'), backgroundColor: Colors.green));
+  }
+
   @override
   void dispose() {
-    _houseCtrl.dispose(); _villageCtrl.dispose(); _landmarkCtrl.dispose(); _pinCtrl.dispose(); _noteCtrl.dispose();
+    _houseCtrl.dispose(); _villageCtrl.dispose(); _landmarkCtrl.dispose(); _pinCtrl.dispose(); _noteCtrl.dispose(); _promoCtrl.dispose();
     super.dispose();
   }
 
@@ -134,8 +164,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     final gstRate = (settings?['gst_percentage'] ?? 0.0).toDouble() / 100;
                     final gst = subtotal * gstRate;
                     final deliveryCharge = isSalon ? 0.0 : orderArea.deliveryCharge;
-                    final total = subtotal + deliveryCharge + platformFee + gst;
+                    final promoDiscount = _appliedPromo != null ? _appliedPromo!.calculateDiscount(subtotal) : 0.0;
+                    final rawTotal = subtotal + deliveryCharge + platformFee + gst - promoDiscount;
+                    final total = rawTotal < 0 ? 0.0 : rawTotal;
                     final belowMinimum = subtotal < orderArea.minimumOrder;
+
+                    final enableCod = (settings?['enable_cod'] ?? true) && !isSalon;
+                    final enableWallet = settings?['enable_wallet'] ?? true;
+                    final enableRazorpay = settings?['enable_razorpay'] ?? true;
+                    final enableCashfree = settings?['enable_cashfree'] ?? true;
+                    final enablePhonepe = settings?['enable_phonepe'] ?? true;
 
                     if (isSalon && _paymentMethod == 'cod') {
                       Future.delayed(Duration.zero, () { if (mounted) setState(() => _paymentMethod = 'razorpay'); });
@@ -188,17 +226,81 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                 )),
                               const SizedBox(height: 20),
                               _SectionCard(title: 'Payment Method', icon: Icons.account_balance_wallet_outlined, cardColor: cardColor, textColor: textColor, primaryColor: primaryColor, child: Column(children: [
-                                if (!isSalon) _PaymentTile(label: 'Cash on Delivery', subtitle: 'Pay after receiving', icon: Icons.payments_outlined, value: 'cod', groupValue: _paymentMethod, onTap: () => setState(() => _paymentMethod = 'cod'), isSalon: isSalon, primaryColor: primaryColor, textColor: textColor, cardColor: cardColor),
-                                const SizedBox(height: 12),
-                                _PaymentTile(label: 'Online with Razorpay', subtitle: isSalon ? 'Prepaid required' : 'UPI, card, wallet', icon: Icons.qr_code_scanner_rounded, value: 'razorpay', groupValue: _paymentMethod, onTap: () => setState(() => _paymentMethod = 'razorpay'), isSalon: isSalon, primaryColor: primaryColor, textColor: textColor, cardColor: cardColor),
-                                const SizedBox(height: 12),
-                                _PaymentTile(label: 'Online with Cashfree', subtitle: 'UPI, Card, Net Banking', icon: Icons.account_balance_wallet_rounded, value: 'cashfree', groupValue: _paymentMethod, onTap: () => setState(() => _paymentMethod = 'cashfree'), isSalon: isSalon, primaryColor: primaryColor, textColor: textColor, cardColor: cardColor),
+                                if (enableWallet) ...[
+                                  _PaymentTile(label: 'Ziko Credits / Wallet', subtitle: 'Pay instantly using Ziko wallet', icon: Icons.account_balance_wallet_rounded, value: 'wallet', groupValue: _paymentMethod, onTap: () => setState(() => _paymentMethod = 'wallet'), isSalon: isSalon, primaryColor: primaryColor, textColor: textColor, cardColor: cardColor),
+                                  const SizedBox(height: 12),
+                                ],
+                                if (enableCod) ...[
+                                  _PaymentTile(label: 'Cash on Delivery', subtitle: 'Pay after receiving', icon: Icons.payments_outlined, value: 'cod', groupValue: _paymentMethod, onTap: () => setState(() => _paymentMethod = 'cod'), isSalon: isSalon, primaryColor: primaryColor, textColor: textColor, cardColor: cardColor),
+                                  const SizedBox(height: 12),
+                                ],
+                                if (enableRazorpay) ...[
+                                  _PaymentTile(label: 'Online with Razorpay', subtitle: isSalon ? 'Prepaid required' : 'UPI, card, wallet', icon: Icons.qr_code_scanner_rounded, value: 'razorpay', groupValue: _paymentMethod, onTap: () => setState(() => _paymentMethod = 'razorpay'), isSalon: isSalon, primaryColor: primaryColor, textColor: textColor, cardColor: cardColor),
+                                  const SizedBox(height: 12),
+                                ],
+                                if (enableCashfree) ...[
+                                  _PaymentTile(label: 'Online with Cashfree', subtitle: 'UPI, Card, Net Banking', icon: Icons.account_balance_wallet_rounded, value: 'cashfree', groupValue: _paymentMethod, onTap: () => setState(() => _paymentMethod = 'cashfree'), isSalon: isSalon, primaryColor: primaryColor, textColor: textColor, cardColor: cardColor),
+                                  const SizedBox(height: 12),
+                                ],
+                                if (enablePhonepe) ...[
+                                  _PaymentTile(label: 'Online with PhonePe', subtitle: 'Instant PhonePe UPI Payment', icon: Icons.phone_android_rounded, value: 'phonepe', groupValue: _paymentMethod, onTap: () => setState(() => _paymentMethod = 'phonepe'), isSalon: isSalon, primaryColor: primaryColor, textColor: textColor, cardColor: cardColor),
+                                ],
                               ])),
                               const SizedBox(height: 20),
+
+                              // PROMO CODES SECTION
+                              _SectionCard(
+                                title: 'Coupons & Offers',
+                                icon: Icons.local_offer_outlined,
+                                cardColor: cardColor,
+                                textColor: textColor,
+                                primaryColor: primaryColor,
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextField(
+                                            controller: _promoCtrl,
+                                            style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
+                                            decoration: InputDecoration(
+                                              hintText: 'Enter Promo Code (e.g. WELCOME50)',
+                                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ElevatedButton(
+                                          onPressed: () => _applyPromoCode(subtotal),
+                                          style: ElevatedButton.styleFrom(backgroundColor: primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                          child: Text(_appliedPromo == null ? 'APPLY' : 'CHANGE', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        ),
+                                      ],
+                                    ),
+                                    if (_appliedPromo != null) ...[
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text('Applied: ${_appliedPromo!.code}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                                          TextButton(
+                                            onPressed: () => setState(() { _appliedPromo = null; _promoCtrl.clear(); }),
+                                            child: const Text('REMOVE', style: TextStyle(color: Colors.red, fontSize: 11)),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+
                               _SectionCard(title: 'Bill Summary', icon: Icons.receipt_long_rounded, cardColor: cardColor, textColor: textColor, primaryColor: primaryColor, child: Column(children: [
                                 _billRow('Item Total', subtotal, textColor, mutedTextColor),
                                 _billRow('Delivery Charge', deliveryCharge, textColor, mutedTextColor, isFree: deliveryCharge == 0),
                                 _billRow('Platform Fee', platformFee, textColor, mutedTextColor),
+                                if (promoDiscount > 0) _billRow('Promo Discount', promoDiscount, Colors.green, Colors.green, isDiscount: true),
                                 Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1, color: isSalon ? Colors.white10 : Colors.grey.shade200)),
                                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Total Amount', style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w900, color: textColor)), Text('₹${total.toInt()}', style: GoogleFonts.urbanist(fontSize: 20, fontWeight: FontWeight.w900, color: primaryColor))]),
                               ])),
@@ -219,8 +321,27 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                   if (!user.isPhoneVerified) { _showPhoneVerificationRequired(user.phone, isSalon, primaryColor); return; }
                                   if (!isSalon && _selectedAddress == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a delivery address first'))); return; }
                                   
-                                  if (_paymentMethod == 'razorpay' || _paymentMethod == 'cashfree') {
-                                    final paymentService = paymentServiceFor(_paymentMethod == 'cashfree' ? PaymentGateway.cashfree : PaymentGateway.razorpay);
+                                  if (_paymentMethod == 'wallet') {
+                                    final walletBalance = ref.read(userWalletBalanceProvider(user.uid)).value ?? 0.0;
+                                    if (walletBalance < total) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('পর্যাপ্ত ওয়ালেট ব্যালেন্স নেই। আপনার ব্যালেন্স: ₹${walletBalance.toInt()}'), backgroundColor: Colors.red),
+                                      );
+                                      return;
+                                    }
+                                    await ref.read(walletRepositoryProvider).addDebit(
+                                      userId: user.uid,
+                                      amount: total,
+                                      title: 'Order Payment',
+                                      description: 'Paid using Ziko Credits',
+                                    );
+                                    await _processOrderPlacement(ref, user, orderArea, itemsList, subtotal, total, platformFee, gst, 'paid', 'WALLET_${DateTime.now().millisecondsSinceEpoch}', isSalon);
+                                  } else if (_paymentMethod == 'razorpay' || _paymentMethod == 'cashfree' || _paymentMethod == 'phonepe') {
+                                    PaymentGateway gateway = PaymentGateway.razorpay;
+                                    if (_paymentMethod == 'cashfree') gateway = PaymentGateway.cashfree;
+                                    if (_paymentMethod == 'phonepe') gateway = PaymentGateway.phonepe;
+
+                                    final paymentService = paymentServiceFor(gateway);
                                     await paymentService.openPayment(amount: total, orderId: 'ORD_${DateTime.now().millisecondsSinceEpoch}', customerName: user.name ?? 'Customer', customerPhone: user.phone, customerEmail: user.email ?? '',
                                       onSuccess: (paymentId) => _processOrderPlacement(ref, user, orderArea, itemsList, subtotal, total, platformFee, gst, 'paid', paymentId, isSalon),
                                       onFailure: (error) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Payment Failed: $error'))),
@@ -271,12 +392,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     showModalBottomSheet(context: context, backgroundColor: Colors.transparent, builder: (context) => Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: isSalon ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: const BorderRadius.vertical(top: Radius.circular(30))), child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.phonelink_lock_rounded, size: 50, color: primary), const SizedBox(height: 16), Text('Verify Phone', style: GoogleFonts.urbanist(fontSize: 20, fontWeight: FontWeight.w900, color: isSalon ? Colors.white : Colors.black)), const SizedBox(height: 30)])));
   }
 
-  Widget _billRow(String label, double val, Color text, Color muted, {bool isFree = false}) {
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w500, color: muted)), Text(isFree ? 'FREE' : '₹${val.toInt()}', style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w700, color: isFree ? Colors.green : text))]));
-  }
-
-  Widget _premiumField(TextEditingController ctrl, String label, IconData icon, Color primary, Color text, Color card, {int maxLines = 1}) {
-    return TextField(controller: ctrl, maxLines: maxLines, style: GoogleFonts.urbanist(fontSize: 15, fontWeight: FontWeight.w600, color: text), decoration: InputDecoration(labelText: label, labelStyle: const TextStyle(color: Colors.grey, fontSize: 13), prefixIcon: Icon(icon, color: primary.withValues(alpha: 0.7)), filled: true, fillColor: text == Colors.white ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)));
+  Widget _billRow(String label, double val, Color text, Color muted, {bool isFree = false, bool isDiscount = false}) {
+    final textVal = isFree ? 'FREE' : (isDiscount ? '-₹${val.toInt()}' : '₹${val.toInt()}');
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w500, color: muted)), Text(textVal, style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w700, color: (isFree || isDiscount) ? Colors.green : text))]));
   }
 }
 

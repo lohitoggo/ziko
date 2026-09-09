@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/admin_provider.dart';
+import '../../wallet/providers/wallet_provider.dart';
 
 class AdminOrdersTab extends ConsumerWidget {
   const AdminOrdersTab({super.key});
@@ -110,6 +111,16 @@ class AdminOrdersTab extends ConsumerWidget {
                           child: const Text('রাইডার পরিবর্তন (Re-assign) করুন'),
                         ),
                       ),
+                    if (status == 'cancelled' || status == 'rejected')
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _processRefundDialog(context, ref, order),
+                          icon: const Icon(Icons.currency_rupee_rounded, size: 16),
+                          label: const Text('ওয়ালেটে রিফান্ড দিন (Wallet Refund)'),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -117,6 +128,53 @@ class AdminOrdersTab extends ConsumerWidget {
           },
         );
       },
+    );
+  }
+
+  void _processRefundDialog(BuildContext context, WidgetRef ref, Map<String, dynamic> order) {
+    final customerUid = order['customerUid'] ?? order['customer_uid'] ?? order['user_id'];
+    final total = (order['totalAmount'] ?? order['total_amount'] ?? 0).toDouble();
+    final orderId = order['orderId']?.toString() ?? 'ZK-${order['id']}';
+
+    if (customerUid == null || customerUid.toString().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('কাস্টমার আইডি পাওয়া যায়নি')));
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('ওয়ালেটে রিফান্ড প্রদান'),
+        content: Text('কাস্টমারের Ziko Wallet-এ ₹${total.toInt()} টাকা রিফান্ড যোগ করতে চান? (অর্ডার: #${orderId.toString().substring(0, 8)})'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('বাতিল')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ref.read(walletRepositoryProvider).addCredit(
+                  userId: customerUid.toString(),
+                  amount: total,
+                  title: 'অর্ডার রিফান্ড (Refund)',
+                  description: 'অর্ডার #${orderId.toString().substring(0, 8)} ক্যানসলেশন রিফান্ড',
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('কাস্টমার ওয়ালেটে সফলভাবে রিফান্ড জমা হয়েছে! ✅'), backgroundColor: Colors.green),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: const Text('রিফান্ড দিন'),
+          ),
+        ],
+      ),
     );
   }
 }

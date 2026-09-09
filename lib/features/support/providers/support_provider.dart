@@ -29,7 +29,14 @@ class SupportNotifier extends StateNotifier<SupportState> {
   final GroqService _groqService;
   final Ref _ref;
 
-  SupportNotifier(this._groqService, this._ref) : super(SupportState(messages: []));
+  SupportNotifier(this._groqService, this._ref)
+      : super(SupportState(messages: [
+          Message(
+            text: 'নমস্কার! Ziko Live Support-এ আপনাকে স্বাগতম। 😊\nআমি Ziko কাস্টমার সার্ভিস টিম থেকে বলছি। কীভাবে আপনাকে সাহায্য করতে পারি?',
+            isUser: false,
+            timestamp: DateTime.now(),
+          ),
+        ]));
 
   Future<void> _updateContext() async {
     try {
@@ -93,6 +100,9 @@ class SupportNotifier extends StateNotifier<SupportState> {
     // Update context before sending
     await _updateContext();
 
+    // Natural human typing latency delay (1.8 seconds)
+    await Future.delayed(const Duration(milliseconds: 1800));
+
     final response = await _groqService.sendMessage(text);
 
     final botMessage = Message(
@@ -109,7 +119,13 @@ class SupportNotifier extends StateNotifier<SupportState> {
 
   void resetChat() {
     _groqService.resetChat();
-    state = SupportState(messages: []);
+    state = SupportState(messages: [
+      Message(
+        text: 'নমস্কার! Ziko Live Support-এ আপনাকে স্বাগতম। 😊\nআমি Ziko কাস্টমার সার্ভিস টিম থেকে বলছি। কীভাবে আপনাকে সাহায্য করতে পারি?',
+        isUser: false,
+        timestamp: DateTime.now(),
+      ),
+    ]);
   }
 }
 

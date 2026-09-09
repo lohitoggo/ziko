@@ -70,5 +70,13 @@
 		<false/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Ziko needs your location to display nearby restaurants and ensure accurate order delivery.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Ziko requires background location access for live rider tracking during deliveries.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Ziko needs camera access to scan salon QR passes and capture business photos.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Ziko needs photo library access to upload profile pictures and store logos.</string>
 	</dict>
 </plist>
