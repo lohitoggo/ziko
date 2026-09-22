@@ -27,6 +27,15 @@ import '../../../core/widgets/floating_cart_button.dart';
 class CustomerHomeScreen extends ConsumerWidget {
   const CustomerHomeScreen({super.key});
 
+  String _formatDisplayName(String? name) {
+    if (name == null || name.trim().isEmpty) return 'Guest User';
+    final trimmed = name.trim();
+    if (trimmed.length > 13) {
+      return trimmed.split(' ').first;
+    }
+    return trimmed;
+  }
+
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Good Morning 👋';
@@ -114,7 +123,7 @@ class CustomerHomeScreen extends ConsumerWidget {
                                   Text(_getGreeting(), style: GoogleFonts.sora(color: Colors.white70, fontSize: 13)),
                                   userAsync.when(
                                     skipLoadingOnReload: true,
-                                    data: (user) => Text(user?.name ?? 'Guest User', style: GoogleFonts.sora(color: isSalon ? primaryColor : Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+                                    data: (user) => Text(_formatDisplayName(user?.name), style: GoogleFonts.sora(color: isSalon ? primaryColor : Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
                                     loading: () => Container(width: 100, height: 20, color: Colors.white24),
                                     error: (_, _) => const Text('Welcome!'),
                                   ),
