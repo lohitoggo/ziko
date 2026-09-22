@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../data/cart_item_model.dart';
 import '../../../core/notifications/notification_service.dart';
+import '../../../core/services/payment/bharatpe_service_impl.dart';
 
 class OrderRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -116,6 +117,10 @@ class OrderRepository {
     required String paymentMethod,
     required String paymentStatus,
     String? paymentId,
+    double? payableAmount,
+    String? bankReferenceNo,
+    String? internalUtr,
+    String? bharatpeTxnId,
     double? latitude,
     double? longitude,
     String? houseNumber,
@@ -129,7 +134,7 @@ class OrderRepository {
       'customer_id': customerUid,
       'business_id': restaurantId,
       'area_id': areaId,
-      'status': 'placed',
+      'status': paymentMethod == 'bharatpe' && paymentStatus == 'pending' ? 'pending_payment' : 'placed',
       'total_amount': totalAmount,
       'delivery_charge': deliveryCharge,
       'platform_fee': platformFee,
@@ -148,6 +153,18 @@ class OrderRepository {
 
     if (paymentId != null) {
       orderData['payment_id'] = paymentId;
+    }
+    if (payableAmount != null) {
+      orderData['payable_amount'] = payableAmount;
+    }
+    if (bankReferenceNo != null) {
+      orderData['bank_reference_no'] = bankReferenceNo;
+    }
+    if (internalUtr != null) {
+      orderData['internal_utr'] = internalUtr;
+    }
+    if (bharatpeTxnId != null) {
+      orderData['bharatpe_txn_id'] = bharatpeTxnId;
     }
 
     try {
@@ -214,5 +231,52 @@ class OrderRepository {
       print('CRITICAL REPOSITORY ERROR: $e');
       rethrow;
     }
+  }
+
+  /// Verifies a BharatPe payment for a given order and confirms it if found
+  Future<bool> verifyAndConfirmBharatPeOrder({
+    required String orderId,
+    required double expectedAmount,
+    required int orderCreatedAtMs,
+  }) async {
+    try {
+      final paymentResult = await BharatPeServiceImpl.verifyBharatPePayment(
+        expectedAmount: expectedAmount,
+        orderCreatedAtMs: orderCreatedAtMs,
+      );
+
+      if (paymentResult != null) {
+        final txnId = paymentResult['transactionId']?.toString();
+        final utr = paymentResult['internalUtr']?.toString();
+        final bankRef = paymentResult['bankReferenceNo']?.toString();
+
+        // Check if this UTR or Txn ID has already been used by another order
+        if (utr != null && utr.isNotEmpty) {
+          final existing = await _supabase
+              .from('orders')
+              .select('id')
+              .eq('internal_utr', utr)
+              .maybeSingle();
+          if (existing != null && existing['id'] != orderId) {
+            debugPrint('UTR $utr already used by another order!');
+            return false;
+          }
+        }
+
+        // Update order status to paid / placed
+        await _supabase.from('orders').update({
+          'status': 'placed',
+          'payment_status': 'paid',
+          'bharatpe_txn_id': txnId,
+          'internal_utr': utr,
+          'bank_reference_no': bankRef,
+        }).eq('id', orderId);
+
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Verify BharatPe order error: $e');
+    }
+    return false;
   }
 }

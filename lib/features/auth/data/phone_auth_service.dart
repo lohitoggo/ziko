@@ -38,6 +38,15 @@ class PhoneAuthService {
         cleanPhone = cleanPhone.substring(cleanPhone.length - 10);
       }
 
+      // GOOGLE PLAY REVIEWER TEST ACCOUNTS
+      if (cleanPhone == '9876543210' || cleanPhone == '9999999999') {
+        _generatedOtp = '123456';
+        _pendingPhone = phoneNumber;
+        debugPrint('DEBUG: Play Store Reviewer Test Account detected. Fixed OTP: 123456');
+        onCodeSent('test_review_session');
+        return;
+      }
+
       // 3. Prepare API URL
       final url = Uri.parse('https://api.hanuotp.in/sms-otp.php').replace(
         queryParameters: {

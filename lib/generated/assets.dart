@@ -25,27 +25,10 @@ class $AssetsImagesGen {
   const $AssetsImagesGen();
 
   final AssetGenImage appIcon = const AssetGenImage(
-      'assets/images/app_icon.png');
-  final AssetGenImage
-
-   
-
-   
-
-  supportAgent
-
-  =
-
-  const AssetGenImage
-
-  (
-
-  '
-
-  assets/images/  support_agent.png
-
-  '
-
+    'assets/images/app_icon.png',
+  );
+  final AssetGenImage supportAgent = const AssetGenImage(
+    'assets/images/support_agent.png',
   );
 }
 
@@ -55,7 +38,8 @@ class $AssetsMapIconsGen {
   final AssetGenImage home = const AssetGenImage('assets/map_icons/home.png');
   final AssetGenImage rider = const AssetGenImage('assets/map_icons/rider.png');
   final AssetGenImage shopMarker = const AssetGenImage(
-      'assets/map_icons/shop_marker.png');
+    'assets/map_icons/shop_marker.png',
+  );
 }
 
 class $AssetsLottieGen {
@@ -92,23 +76,30 @@ class $AssetsDataGen {
   const $AssetsDataGen();
 
   final String addressModel = 'lib/features/customer/data/address_model.dart';
-  final String addressRepository = 'lib/features/customer/data/address_repository.dart';
+  final String addressRepository =
+      'lib/features/customer/data/address_repository.dart';
   final String businessModel = 'lib/features/customer/data/business_model.dart';
-  final String businessRepository = 'lib/features/customer/data/business_repository.dart';
-  final String cartItemModel = 'lib/features/customer/data/cart_item_model.dart';
-  final String foodItemModel = 'lib/features/customer/data/food_item_model.dart';
-  final String foodItemRepository = 'lib/features/customer/data/food_item_repository.dart';
-  final String orderRepository = 'lib/features/customer/data/order_repository.dart';
+  final String businessRepository =
+      'lib/features/customer/data/business_repository.dart';
+  final String cartItemModel =
+      'lib/features/customer/data/cart_item_model.dart';
+  final String foodItemModel =
+      'lib/features/customer/data/food_item_model.dart';
+  final String foodItemRepository =
+      'lib/features/customer/data/food_item_repository.dart';
+  final String orderRepository =
+      'lib/features/customer/data/order_repository.dart';
   final String reviewModel = 'lib/features/customer/data/review_model.dart';
-  final String reviewRepository = 'lib/features/customer/data/review_repository.dart';
-  final String wishlistRepository = 'lib/features/customer/data/wishlist_repository.dart';
+  final String reviewRepository =
+      'lib/features/customer/data/review_repository.dart';
+  final String wishlistRepository =
+      'lib/features/customer/data/wishlist_repository.dart';
 }
 
 class AssetGenImage {
   const AssetGenImage(this._assetName, {this.size, this.flavors = const {}});
 
   final String _assetName;
-
 
   final Size? size;
   final Set<String> flavors;
@@ -166,15 +157,8 @@ class AssetGenImage {
     );
   }
 
-  ImageProvider provider({
-    AssetBundle? bundle,
-    String? package,
-  }) {
-    return AssetImage(
-      _assetName,
-      bundle: bundle,
-      package: package,
-    );
+  ImageProvider provider({AssetBundle? bundle, String? package}) {
+    return AssetImage(_assetName, bundle: bundle, package: package);
   }
 
   Widget custom({
@@ -191,4 +175,3 @@ class AssetGenImage {
 
   String get keyName => _assetName;
 }
-

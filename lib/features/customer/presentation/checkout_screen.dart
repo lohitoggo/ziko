@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:async';
 import '../providers/cart_provider.dart';
 import '../providers/order_provider.dart';
 import '../providers/business_provider.dart';
@@ -11,7 +13,11 @@ import '../../auth/data/area_model.dart';
 import '../../admin/providers/admin_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/payment/payment_service.dart';
+import '../../../core/services/payment/bharatpe_service_impl.dart';
 import 'order_success_screen.dart';
+import 'saved_addresses_screen.dart';
+import '../../auth/presentation/change_phone_screen.dart';
+import '../../auth/data/phone_auth_service.dart';
 import '../providers/address_provider.dart';
 import '../data/address_model.dart';
 import '../../wallet/providers/wallet_provider.dart';
@@ -221,7 +227,31 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                         const SizedBox(width: 12),
                                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_selectedAddress!.village, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor)), Text('${_selectedAddress!.houseNumber}, ${_selectedAddress!.landmark}', style: TextStyle(fontSize: 12, color: mutedTextColor))])),
                                         TextButton(onPressed: () => _showAddressPicker(primaryColor, textColor, cardColor), child: Text('CHANGE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: primaryColor))),
-                                      ])),
+                                      ]))
+                                    else
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton.icon(
+                                          onPressed: () {
+                                            if (addresses.isEmpty) {
+                                              Navigator.push(context, MaterialPageRoute(builder: (_) => const SavedAddressesScreen()));
+                                            } else {
+                                              _showAddressPicker(primaryColor, textColor, cardColor);
+                                            }
+                                          },
+                                          icon: const Icon(Icons.add_location_alt_rounded, size: 18),
+                                          label: Text(
+                                            addresses.isEmpty ? '+ ADD NEW DELIVERY ADDRESS' : 'SELECT DELIVERY ADDRESS',
+                                            style: GoogleFonts.urbanist(fontWeight: FontWeight.bold, fontSize: 12),
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: primaryColor,
+                                            side: BorderSide(color: primaryColor),
+                                            padding: const EdgeInsets.symmetric(vertical: 14),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                          ),
+                                        ),
+                                      ),
                                   ]),
                                 )),
                               const SizedBox(height: 20),
@@ -244,7 +274,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                 ],
                                 if (enablePhonepe) ...[
                                   _PaymentTile(label: 'Online with PhonePe', subtitle: 'Instant PhonePe UPI Payment', icon: Icons.phone_android_rounded, value: 'phonepe', groupValue: _paymentMethod, onTap: () => setState(() => _paymentMethod = 'phonepe'), isSalon: isSalon, primaryColor: primaryColor, textColor: textColor, cardColor: cardColor),
+                                  const SizedBox(height: 12),
                                 ],
+                                _PaymentTile(label: 'BharatPe UPI / QR', subtitle: 'Scan QR or Pay via any UPI App', icon: Icons.qr_code_2_rounded, value: 'bharatpe', groupValue: _paymentMethod, onTap: () => setState(() => _paymentMethod = 'bharatpe'), isSalon: isSalon, primaryColor: primaryColor, textColor: textColor, cardColor: cardColor),
                               ])),
                               const SizedBox(height: 20),
 
@@ -346,6 +378,53 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                       onSuccess: (paymentId) => _processOrderPlacement(ref, user, orderArea, itemsList, subtotal, total, platformFee, gst, 'paid', paymentId, isSalon),
                                       onFailure: (error) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Payment Failed: $error'))),
                                     );
+                                  } else if (_paymentMethod == 'bharatpe') {
+                                    final tempOrderId = 'ORD_${DateTime.now().millisecondsSinceEpoch}';
+                                    final uniqueAmount = BharatPeServiceImpl.calculateUniquePayableAmount(total, tempOrderId);
+                                    final orderCreatedAtMs = DateTime.now().millisecondsSinceEpoch;
+
+                                    setState(() => _isPlacing = true);
+                                    try {
+                                      final orderId = await ref.read(orderRepositoryProvider).placeOrder(
+                                        customerUid: user.uid,
+                                        restaurantId: itemsList.first.food.restaurantId,
+                                        areaId: _selectedAddress?.areaId ?? user.areaId!,
+                                        items: itemsList,
+                                        subtotal: subtotal,
+                                        deliveryCharge: isSalon ? 0.0 : orderArea.deliveryCharge,
+                                        platformFee: platformFee,
+                                        gst: gst,
+                                        totalAmount: total,
+                                        payableAmount: uniqueAmount,
+                                        paymentMethod: 'bharatpe',
+                                        paymentStatus: 'pending',
+                                        latitude: _selectedAddress?.latitude,
+                                        longitude: _selectedAddress?.longitude,
+                                        houseNumber: isSalon ? '' : (_selectedAddress?.houseNumber ?? ''),
+                                        village: isSalon ? '' : (_selectedAddress?.village ?? ''),
+                                        landmark: isSalon ? '' : (_selectedAddress?.landmark ?? ''),
+                                        pinCode: isSalon ? '' : (_selectedAddress?.pinCode ?? ''),
+                                        deliveryNote: _noteCtrl.text.trim(),
+                                        appointmentTime: isSalon ? '${DateFormat('yyyy-MM-dd').format(ref.read(cartProvider.notifier).selectedDate)} | ${ref.read(cartProvider.notifier).selectedSlot}' : null,
+                                      );
+
+                                      setState(() => _isPlacing = false);
+
+                                      if (mounted) {
+                                        _showBharatPePaymentDialog(
+                                          context: context,
+                                          ref: ref,
+                                          orderId: orderId,
+                                          payableAmount: uniqueAmount,
+                                          orderCreatedAtMs: orderCreatedAtMs,
+                                          isSalon: isSalon,
+                                          category: itemsList.first.food.category,
+                                        );
+                                      }
+                                    } catch (e) {
+                                      setState(() => _isPlacing = false);
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                                    }
                                   } else {
                                     await _processOrderPlacement(ref, user, orderArea, itemsList, subtotal, total, platformFee, gst, 'pending', null, isSalon);
                                   }
@@ -388,13 +467,342 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     finally { if (mounted) setState(() => _isPlacing = false); }
   }
 
+  void _showBharatPePaymentDialog({
+    required BuildContext context,
+    required WidgetRef ref,
+    required String orderId,
+    required double payableAmount,
+    required int orderCreatedAtMs,
+    required bool isSalon,
+    required String category,
+  }) {
+    double currentAmount = payableAmount;
+    Timer? pollingTimer;
+    bool isVerifying = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final upiUri = BharatPeServiceImpl.getUpiIntentUri(
+              payableAmount: currentAmount,
+              orderId: orderId,
+              isStatic: false,
+            );
+
+            pollingTimer ??= Timer.periodic(const Duration(seconds: 4), (timer) async {
+              if (isVerifying) return;
+              setDialogState(() => isVerifying = true);
+
+              final verified = await ref.read(orderRepositoryProvider).verifyAndConfirmBharatPeOrder(
+                orderId: orderId,
+                expectedAmount: currentAmount,
+                orderCreatedAtMs: orderCreatedAtMs,
+              );
+
+              if (verified) {
+                timer.cancel();
+                if (mounted) {
+                  Navigator.pop(dialogCtx);
+                  ref.read(cartProvider.notifier).clear();
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => OrderSuccessScreen(orderId: orderId, isSalon: isSalon, category: category)),
+                  );
+                }
+              } else {
+                if (mounted) setDialogState(() => isVerifying = false);
+              }
+            });
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: Column(
+                children: [
+                  const Icon(Icons.qr_code_2_rounded, size: 48, color: Colors.deepOrange),
+                  const SizedBox(height: 8),
+                  Text('Secure QR Payment', style: GoogleFonts.urbanist(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 4),
+                  Text('Scan to Pay via any UPI App', style: GoogleFonts.urbanist(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.amber.shade200)),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Order Total: ₹$payableAmount',
+                            style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.deepOrange),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'নিচের QR কোডটি অন্য কোনো ফোন দিয়ে (GPay/PhonePe/Paytm) স্ক্যান করে পেমেন্ট সম্পন্ন করুন।\n\nপেমেন্ট সফল হওয়ার সাথে সাথেই এই পেজটি অটোমেটিক কনফার্ম হয়ে যাবে!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500, height: 1.4),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+                      ),
+                      child: QrImageView(
+                        data: upiUri,
+                        version: QrVersions.auto,
+                        size: 240.0,
+                        backgroundColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                        const SizedBox(width: 12),
+                        Text(isVerifying ? 'Checking payment status...' : 'Waiting for payment scan...', style: GoogleFonts.urbanist(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    pollingTimer?.cancel();
+                    Navigator.pop(dialogCtx);
+                    // On cancel, actually delete the pending order from DB since it's a prepaid requirement
+                    try {
+                      await ref.read(orderRepositoryProvider).cancelOrder(orderId, reason: 'Payment cancelled by user');
+                    } catch(e) {
+                      debugPrint('Failed to cancel un-paid BharatPe order: $e');
+                    }
+                  },
+                  child: const Text('Cancel Payment', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) {
+      pollingTimer?.cancel();
+    });
+  }
+
   void _showPhoneVerificationRequired(String phone, bool isSalon, Color primary) {
-    showModalBottomSheet(context: context, backgroundColor: Colors.transparent, builder: (context) => Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: isSalon ? const Color(0xFF1E1E1E) : Colors.white, borderRadius: const BorderRadius.vertical(top: Radius.circular(30))), child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.phonelink_lock_rounded, size: 50, color: primary), const SizedBox(height: 16), Text('Verify Phone', style: GoogleFonts.urbanist(fontSize: 20, fontWeight: FontWeight.w900, color: isSalon ? Colors.white : Colors.black)), const SizedBox(height: 30)])));
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _PhoneVerificationSheet(
+        phone: phone,
+        isSalon: isSalon,
+        primary: primary,
+        onVerified: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ফোন নম্বর সফলভাবে ভেরিফাই করা হয়েছে! এবার প্লেস অর্ডার চাপুন। ✅'), backgroundColor: Colors.green),
+          );
+        },
+      ),
+    );
   }
 
   Widget _billRow(String label, double val, Color text, Color muted, {bool isFree = false, bool isDiscount = false}) {
     final textVal = isFree ? 'FREE' : (isDiscount ? '-₹${val.toInt()}' : '₹${val.toInt()}');
     return Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w500, color: muted)), Text(textVal, style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w700, color: (isFree || isDiscount) ? Colors.green : text))]));
+  }
+}
+
+class _PhoneVerificationSheet extends ConsumerStatefulWidget {
+  final String phone;
+  final bool isSalon;
+  final Color primary;
+  final VoidCallback onVerified;
+
+  const _PhoneVerificationSheet({
+    required this.phone,
+    required this.isSalon,
+    required this.primary,
+    required this.onVerified,
+  });
+
+  @override
+  ConsumerState<_PhoneVerificationSheet> createState() => _PhoneVerificationSheetState();
+}
+
+class _PhoneVerificationSheetState extends ConsumerState<_PhoneVerificationSheet> {
+  final _phoneAuth = PhoneAuthService();
+  final _otpCtrl = TextEditingController();
+  bool _codeSent = false;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _otpCtrl.dispose();
+    super.dispose();
+  }
+
+  void _sendOtp() async {
+    setState(() => _isLoading = true);
+    await _phoneAuth.sendOtp(
+      phoneNumber: widget.phone,
+      onCodeSent: (id) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _codeSent = true;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('OTP পাঠানো হয়েছে ✅'), backgroundColor: Colors.green),
+          );
+        }
+      },
+      onError: (err) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(err), backgroundColor: Colors.red),
+          );
+        }
+      },
+    );
+  }
+
+  void _verifyOtp() async {
+    final otp = _otpCtrl.text.trim();
+    if (otp.length < 4) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('সঠিক OTP কোড দিন')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final success = await _phoneAuth.verifyOtp(otp);
+    if (mounted) setState(() => _isLoading = false);
+
+    if (success) {
+      ref.invalidate(currentUserProvider);
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onVerified();
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ভুল OTP কোড! আবার চেষ্টা করুন।'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isSalon = widget.isSalon;
+    final primary = widget.primary;
+
+    return Container(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      decoration: BoxDecoration(
+        color: isSalon ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: Icon(Icons.phonelink_lock_rounded, size: 36, color: primary),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'ফোন নম্বর ভেরিফাই করুন 📱',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w900, color: isSalon ? Colors.white : AppColors.charcoal),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'নম্বর: ${widget.phone}',
+                style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.bold, color: primary),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePhoneScreen()));
+                },
+                child: const Text('পরিবর্তন করুন', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12, decoration: TextDecoration.underline)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          if (!_codeSent) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _sendOtp,
+                style: ElevatedButton.styleFrom(backgroundColor: primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('SEND OTP (ওটিপি পাঠান)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)),
+              ),
+            ),
+          ] else ...[
+            TextField(
+              controller: _otpCtrl,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              style: GoogleFonts.urbanist(fontWeight: FontWeight.bold, fontSize: 16),
+              decoration: InputDecoration(
+                labelText: '৬ ডিজিটের ওটিপি লিখুন',
+                prefixIcon: const Icon(Icons.security_rounded),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _verifyOtp,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('VERIFY OTP (ভেরিফাই করুন)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const SizedBox(height: 10),
+            Center(
+              child: TextButton(
+                onPressed: _isLoading ? null : _sendOtp,
+                child: const Text('Resend OTP (পুনরায় পাঠান)', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
   }
 }
 

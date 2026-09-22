@@ -18,6 +18,12 @@ class SupabaseAuthController {
   SupabaseAuthController(this._client);
 
   Future<void> signInWithEmail(String email) async {
+    final cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail == 'test@ziko.com' || cleanEmail == 'reviewer@ziko.com') {
+      // Direct bypass for Play Store reviewer email
+      return;
+    }
+
     await _client.auth.signInWithOtp(
       email: email,
       emailRedirectTo: 'io.supabase.flutterquickstart://login-callback/',
@@ -25,6 +31,18 @@ class SupabaseAuthController {
   }
 
   Future<AuthResponse> verifyEmailOtp(String email, String token) async {
+    final cleanEmail = email.trim().toLowerCase();
+    final cleanToken = token.trim();
+
+    // PLAY STORE REVIEWER TEST BYPASS
+    if ((cleanEmail == 'test@ziko.com' || cleanEmail == 'reviewer@ziko.com') && cleanToken == '123456') {
+      try {
+        return await _client.auth.signInWithPassword(email: cleanEmail, password: 'TestUser123456!');
+      } catch (e) {
+        return await _client.auth.signUp(email: cleanEmail, password: 'TestUser123456!');
+      }
+    }
+
     return await _client.auth.verifyOTP(
       email: email,
       token: token,

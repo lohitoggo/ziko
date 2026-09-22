@@ -92,6 +92,12 @@ class AdminOrdersTab extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text('স্ট্যাটাস: $status',
                         style: const TextStyle(color: Colors.grey)),
+                    const SizedBox(height: 4),
+                    Text('পেমেন্ট: ${order['payment_method'] ?? 'cod'} (${order['payment_status'] ?? 'pending'})', style: const TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                    if (order['bank_reference_no'] != null && order['bank_reference_no'].toString().isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text('UTR / Bank Ref: ${order['bank_reference_no']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green)),
+                    ],
                     const SizedBox(height: 8),
                     if (status == 'ready' && !hasRider)
                       SizedBox(

@@ -1,3 +1,4 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'payment_service.dart';
 
@@ -26,8 +27,10 @@ class RazorpayServiceImpl implements PaymentService {
     _onSuccess = onSuccess;
     _onFailure = onFailure;
 
+    final String razorpayKey = dotenv.env['RAZORPAY_KEY_ID'] ?? 'rzp_test_TEU2e9njVt2N4C';
+
     final options = {
-      'key': 'rzp_test_TEU2e9njVt2N4C',
+      'key': razorpayKey,
       'amount': (amount * 100).toInt(), // Razorpay expects amount in paise
       'name': 'Ziko Marketplace',
       'description': 'Order #$orderId',

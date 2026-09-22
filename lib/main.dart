@@ -15,6 +15,9 @@ import 'core/connectivity/connectivity_service.dart';
 import 'features/admin/providers/admin_provider.dart';
 import 'features/customer/providers/business_provider.dart';
 
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -30,10 +33,21 @@ void main() async {
   ForegroundService.init();
   CallNotificationService.initGlobalListeners();
 
-  // 2. Initialize Firebase
+  // 2. Initialize Firebase & Crashlytics
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Pass all uncaught Flutter framework errors to Crashlytics
+  FlutterError.onError = (errorDetails) {
+    FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+  };
+
+  // Pass all uncaught asynchronous errors to Crashlytics
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
 
   // 3. Initialize Supabase
   await Supabase.initialize(

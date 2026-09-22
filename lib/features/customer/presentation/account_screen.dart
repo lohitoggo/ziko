@@ -9,6 +9,7 @@ import '../../auth/providers/supabase_auth_provider.dart';
 import '../../auth/presentation/auth_wrapper.dart';
 import '../../auth/data/user_model.dart';
 import '../../auth/data/phone_auth_service.dart';
+import '../../auth/presentation/change_phone_screen.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/upload_provider.dart';
 import '../providers/order_provider.dart';
@@ -176,6 +177,15 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                     ),
                     const SizedBox(width: 8),
                     _buildVerificationBadge(user),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePhoneScreen())),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
+                        child: const Text('Change', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
                   ],
                 ),
               ],

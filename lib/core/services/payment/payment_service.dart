@@ -2,9 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'cashfree_service_impl.dart';
 import 'razorpay_service_impl.dart';
 import 'phonepe_service_impl.dart';
+import 'bharatpe_service_impl.dart';
 
 /// Abstract class to define common payment operations.
-/// This allows switching between Razorpay, BulkPe, PhonePe etc., without touching the UI.
+/// This allows switching between Razorpay, BulkPe, PhonePe, BharatPe etc., without touching the UI.
 abstract class PaymentService {
   Future<void> openPayment({
     required double amount,
@@ -19,7 +20,7 @@ abstract class PaymentService {
   void dispose();
 }
 
-enum PaymentGateway { razorpay, cashfree, phonepe }
+enum PaymentGateway { razorpay, cashfree, phonepe, bharatpe }
 
 PaymentService paymentServiceFor(PaymentGateway gateway) {
   switch (gateway) {
@@ -29,6 +30,8 @@ PaymentService paymentServiceFor(PaymentGateway gateway) {
       return CashfreeServiceImpl();
     case PaymentGateway.phonepe:
       return PhonePeServiceImpl();
+    case PaymentGateway.bharatpe:
+      return BharatPeServiceImpl();
   }
 }
 
