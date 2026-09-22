@@ -58,44 +58,45 @@ class WishlistScreen extends ConsumerWidget {
                     icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
                     onPressed: () => _handleBack(context, ref),
                   ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'My Wishlist',
-                      style: GoogleFonts.urbanist(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'My Wishlist',
+                        style: GoogleFonts.urbanist(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Items you have saved for later',
-                      style: GoogleFonts.urbanist(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                      Text(
+                        'Items you have saved for later',
+                        style: GoogleFonts.urbanist(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          Expanded(
-            child: wishlistAsync.when(
-              skipLoadingOnReload: true,
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, stack) {
-                if (wishlistAsync.hasValue) return _buildWishlist(wishlistAsync.value!, context, ref);
-                return Center(child: Text('Error: $e'));
-              },
-              data: (items) => _buildWishlist(items, context, ref),
+            Expanded(
+              child: wishlistAsync.when(
+                skipLoadingOnReload: true,
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, stack) {
+                  if (wishlistAsync.hasValue) return _buildWishlist(wishlistAsync.value!, context, ref);
+                  return Center(child: Text('Error: $e'));
+                },
+                data: (items) => _buildWishlist(items, context, ref),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -215,7 +216,6 @@ class WishlistScreen extends ConsumerWidget {
           ),
         );
       },
-    ),
     );
   }
 }
