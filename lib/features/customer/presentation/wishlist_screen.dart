@@ -7,41 +7,57 @@ import '../data/food_item_model.dart';
 import '../../auth/providers/supabase_auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import 'item_details_screen.dart';
+import 'customer_main_shell.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class WishlistScreen extends ConsumerWidget {
   const WishlistScreen({super.key});
 
+  void _handleBack(BuildContext context, WidgetRef ref) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      ref.read(customerTabControllerProvider.notifier).state = 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final wishlistAsync = ref.watch(wishlistProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F4),
-      body: Column(
-        children: [
-          // 1. Premium Gradient Header
-          Container(
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 10,
-              bottom: 20,
-              left: 16,
-              right: 16,
-            ),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFF45D27), Color(0xFFFF8A00)],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleBack(context, ref);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFF8F4),
+        body: Column(
+          children: [
+            // 1. Premium Gradient Header
+            Container(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 10,
+                bottom: 20,
+                left: 16,
+                right: 16,
               ),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-                  onPressed: () => Navigator.pop(context),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFF45D27), Color(0xFFFF8A00)],
                 ),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                    onPressed: () => _handleBack(context, ref),
+                  ),
                 const SizedBox(width: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,6 +215,7 @@ class WishlistScreen extends ConsumerWidget {
           ),
         );
       },
+    ),
     );
   }
 }

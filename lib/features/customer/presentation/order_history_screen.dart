@@ -14,6 +14,7 @@ import '../../invoices/presentation/customer_invoice_screen.dart';
 import '../../../core/theme/app_theme.dart';
 import 'order_tracking_screen.dart';
 import 'cart_screen.dart';
+import 'customer_main_shell.dart';
 
 class OrderHistoryScreen extends ConsumerStatefulWidget {
   const OrderHistoryScreen({super.key});
@@ -78,31 +79,46 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
     return false;
   }
 
+  void _handleBack(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      ref.read(customerTabControllerProvider.notifier).state = 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ordersAsync = ref.watch(customerOrdersProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F4),
-      body: Column(
-        children: [
-          // 1. Restore Premium Gradient Header
-          Container(
-            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 10, bottom: 20, left: 16, right: 16),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFF45D27), Color(0xFFFF8A00)],
-              ),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-                  onPressed: () => Navigator.pop(context),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleBack(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFF8F4),
+        body: Column(
+          children: [
+            // 1. Restore Premium Gradient Header
+            Container(
+              padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 10, bottom: 20, left: 16, right: 16),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFF45D27), Color(0xFFFF8A00)],
                 ),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                    onPressed: () => _handleBack(context),
+                  ),
                 const SizedBox(width: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,6 +203,7 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 }
