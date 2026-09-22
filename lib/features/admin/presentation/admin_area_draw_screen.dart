@@ -324,14 +324,24 @@ class _AdminAreaDrawScreenState extends State<AdminAreaDrawScreen> {
         ),
       );
 
-      if (_points.length <= 50) {
+      if (_points.length <= 100) {
         for (int i = 0; i < _points.length; i++) {
+          final index = i;
           markers.add(
             gm.Marker(
-              markerId: gm.MarkerId('pt_$i'),
-              position: _points[i],
-              infoWindow: gm.InfoWindow(title: 'Point ${i + 1}'),
+              markerId: gm.MarkerId('pt_$index'),
+              position: _points[index],
+              draggable: true,
+              infoWindow: gm.InfoWindow(
+                title: 'Point ${index + 1}',
+                snippet: 'Hold & drag to move this pin',
+              ),
               icon: gm.BitmapDescriptor.defaultMarkerWithHue(gm.BitmapDescriptor.hueOrange),
+              onDragEnd: (newPosition) {
+                setState(() {
+                  _points[index] = newPosition;
+                });
+              },
             ),
           );
         }
@@ -436,8 +446,8 @@ class _AdminAreaDrawScreenState extends State<AdminAreaDrawScreen> {
               ),
               child: Text(
                 _points.isEmpty
-                    ? '💡 Google Maps লিংক পেস্ট করুন অথবা ম্যাপে পিন ট্যাপ করে ড্র করুন'
-                    : 'বাউন্ডারি পয়েন্ট: ${_points.length} টি। প্রয়োজনে ট্যাপ করে যোগ/এডিট করুন।',
+                    ? '💡 ম্যাপে ট্যাপ করে পিন ড্র করুন। পিন ড্র্যাগ (Drag) করে মুভ করতে পারবেন।'
+                    : 'বাউন্ডারি পয়েন্ট: ${_points.length} টি। যেকোনো পিন চেপে ধরে ড্র্যাগ করে মুভ করুন।',
                 style: GoogleFonts.urbanist(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
