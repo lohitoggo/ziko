@@ -18,6 +18,7 @@ import 'cart_screen.dart';
 import 'order_history_screen.dart';
 import 'customer_main_shell.dart';
 import 'category_shops_screen.dart';
+import 'notifications_screen.dart';
 import '../../grocery/presentation/grocery_home_screen.dart';
 import '../../grocery/providers/grocery_providers.dart';
 import '../../grocery/presentation/widgets/product_card.dart';
@@ -43,14 +44,31 @@ class CustomerHomeScreen extends ConsumerWidget {
     return 'Good Evening 👋';
   }
 
-  Widget _headerActionIcon(IconData icon, VoidCallback onTap) {
+  Widget _headerActionIcon(IconData icon, VoidCallback onTap, {bool hasBadge = false}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-        child: Icon(icon, color: Colors.white, size: 22),
+      child: Stack(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
+          if (hasBadge)
+            Positioned(
+              right: 6,
+              top: 6,
+              child: Container(
+                width: 9,
+                height: 9,
+                decoration: const BoxDecoration(
+                  color: Colors.redAccent,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -130,7 +148,13 @@ class CustomerHomeScreen extends ConsumerWidget {
                                 ],
                               ),
                             ),
-                            _headerActionIcon(Icons.notifications_none_rounded, () {}),
+                            _headerActionIcon(
+                              Icons.notifications_none_rounded, 
+                              () {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+                              },
+                              hasBadge: settingsAsync.value?['latest_app_version'] != null && settingsAsync.value?['latest_app_version'] != NotificationsScreen.currentAppVersion,
+                            ),
                             const SizedBox(width: 12),
                             _headerActionIcon(Icons.person_outline_rounded, () {
                               ref.read(customerTabControllerProvider.notifier).state = 3;

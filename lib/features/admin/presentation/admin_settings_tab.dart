@@ -18,12 +18,18 @@ class _AdminSettingsTabState extends ConsumerState<AdminSettingsTab> {
   final _platformFeeCtrl = TextEditingController();
   final _gstCtrl = TextEditingController();
   final _announcementCtrl = TextEditingController();
+  final _versionCtrl = TextEditingController();
+  final _updateUrlCtrl = TextEditingController();
+  final _updateNotesCtrl = TextEditingController();
 
   @override
   void dispose() {
     _platformFeeCtrl.dispose();
     _gstCtrl.dispose();
     _announcementCtrl.dispose();
+    _versionCtrl.dispose();
+    _updateUrlCtrl.dispose();
+    _updateNotesCtrl.dispose();
     super.dispose();
   }
 
@@ -33,6 +39,9 @@ class _AdminSettingsTabState extends ConsumerState<AdminSettingsTab> {
         'platformFee': double.tryParse(_platformFeeCtrl.text) ?? 0.0,
         'gstPercentage': double.tryParse(_gstCtrl.text) ?? 0.0,
         'announcement': _announcementCtrl.text.trim(),
+        'latest_app_version': _versionCtrl.text.trim(),
+        'app_update_url': _updateUrlCtrl.text.trim(),
+        'app_update_notes': _updateNotesCtrl.text.trim(),
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('সেটিংস সফলভাবে আপডেট হয়েছে')));
@@ -91,6 +100,9 @@ class _AdminSettingsTabState extends ConsumerState<AdminSettingsTab> {
           _platformFeeCtrl.text = (settings?['platform_fee'] ?? 0.0).toString();
           _gstCtrl.text = (settings?['gst_percentage'] ?? 0.0).toString();
           _announcementCtrl.text = settings?['announcement'] ?? '';
+          _versionCtrl.text = settings?['latest_app_version'] ?? '1.0.1';
+          _updateUrlCtrl.text = settings?['app_update_url'] ?? 'https://zikoapp.online';
+          _updateNotesCtrl.text = settings?['app_update_notes'] ?? '';
           final List<String> bannerUrls = List<String>.from(settings?['banner_urls'] ?? []);
 
           return SingleChildScrollView(
@@ -211,6 +223,57 @@ class _AdminSettingsTabState extends ConsumerState<AdminSettingsTab> {
                         controller: _announcementCtrl,
                         maxLines: 2,
                         decoration: const InputDecoration(hintText: 'মেসেজ এখানে লিখুন...'),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // 5. App Update Settings Card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.indigo.shade100),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.system_update_rounded, color: Colors.indigo),
+                          SizedBox(width: 8),
+                          Text('অ্যাপ আপডেট কন্ট্রোল (App Update Control)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text('এখানে নতুন ভার্সন দিলে সব কাস্টমারের নোটিফিকেশনে আপডেট বোতামসহ নোটিফিকেশন চলে যাবে।', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                      const Divider(height: 24),
+                      TextField(
+                        controller: _versionCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'লেটেস্ট ভার্সন (যেমন: 1.0.2)',
+                          prefixIcon: Icon(Icons.numbers_rounded),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _updateUrlCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'ডাউনলোড/আপডেট লিংক (Play Store / APK Link)',
+                          prefixIcon: Icon(Icons.link_rounded),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _updateNotesCtrl,
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                          labelText: 'আপডেট নোটস (কাস্টমারদের যা দেখানো হবে)',
+                          prefixIcon: Icon(Icons.notes_rounded),
+                        ),
                       ),
                     ],
                   ),
