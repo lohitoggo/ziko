@@ -78,11 +78,11 @@ class _AdminAreaDrawScreenState extends State<AdminAreaDrawScreen> {
 
     // Step 1: Use Mappls (MapmyIndia) Geocoding first for high precision Indian location search
     try {
-      final mapplsRes = await mgl.MapplsGeocode(address: rawQuery).callGeocode();
+      final mapplsRes = await mgl.MapplsGeoCoding(address: rawQuery).callGeocoding();
       if (mapplsRes != null && mapplsRes.results != null && mapplsRes.results!.isNotEmpty) {
         final top = mapplsRes.results!.first;
-        final lat = double.tryParse(top.latitude?.toString() ?? '');
-        final lng = double.tryParse(top.longitude?.toString() ?? '');
+        final lat = top.latitude;
+        final lng = top.longitude;
         if (lat != null && lng != null) {
           fallbackCenter = gm.LatLng(lat, lng);
         }
