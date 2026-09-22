@@ -62,11 +62,42 @@ class _AdminAreaDrawScreenState extends State<AdminAreaDrawScreen> {
     });
   }
 
+  gm.LatLng? _extractCoordinatesFromGoogleMapsUrl(String text) {
+    // Pattern 1: !3d22.6228102!4d87.9175451
+    final p1 = RegExp(r'!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)');
+    final m1 = p1.firstMatch(text);
+    if (m1 != null) {
+      final lat = double.tryParse(m1.group(1) ?? '');
+      final lng = double.tryParse(m1.group(2) ?? '');
+      if (lat != null && lng != null) return gm.LatLng(lat, lng);
+    }
+
+    // Pattern 2: @22.6235849,87.919535
+    final p2 = RegExp(r'@(-?\d+\.\d+),(-?\d+\.\d+)');
+    final m2 = p2.firstMatch(text);
+    if (m2 != null) {
+      final lat = double.tryParse(m2.group(1) ?? '');
+      final lng = double.tryParse(m2.group(2) ?? '');
+      if (lat != null && lng != null) return gm.LatLng(lat, lng);
+    }
+
+    // Pattern 3: ?q=22.6228,87.9175
+    final p3 = RegExp(r'[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)');
+    final m3 = p3.firstMatch(text);
+    if (m3 != null) {
+      final lat = double.tryParse(m3.group(1) ?? '');
+      final lng = double.tryParse(m3.group(2) ?? '');
+      if (lat != null && lng != null) return gm.LatLng(lat, lng);
+    }
+
+    return null;
+  }
+
   Future<void> _fetchOfficialBoundary() async {
-    final rawQuery = _searchCtrl.text.trim();
+    String rawQuery = _searchCtrl.text.trim();
     if (rawQuery.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('গ্রাম বা এলাকার নাম লিখুন')),
+        const SnackBar(content: Text('গ্রামের নাম বা Google Maps লিংক পেস্ট করুন')),
       );
       return;
     }
@@ -76,49 +107,37 @@ class _AdminAreaDrawScreenState extends State<AdminAreaDrawScreen> {
     List<gm.LatLng> fetchedPoints = [];
     gm.LatLng? fallbackCenter;
 
-    // Step 1: Use Mappls (MapmyIndia) Geocoding first for high precision Indian location search
-    try {
-      final mapplsRes = await mgl.MapplsGeoCoding(address: rawQuery).callGeocoding();
-      if (mapplsRes != null && mapplsRes.results != null && mapplsRes.results!.isNotEmpty) {
-        final top = mapplsRes.results!.first;
-        final lat = top.latitude;
-        final lng = top.longitude;
-        if (lat != null && lng != null) {
-          fallbackCenter = gm.LatLng(lat, lng);
-        }
-      }
-    } catch (e) {
-      debugPrint('Mappls Geocode search error: $e');
-    }
-
-    // Step 2: Query for boundary polygons
-    final queriesToTry = [
-      '$rawQuery, India',
-      '$rawQuery, West Bengal, India',
-      rawQuery,
-    ];
-
-    for (final q in queriesToTry) {
+    // STEP 0: Check if input is a Google Maps Link
+    if (rawQuery.contains('http') || rawQuery.contains('google.com/maps') || rawQuery.contains('goo.gl')) {
+      // Resolve short URL if needed
       try {
-        final url = Uri.parse(
-          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(q)}&format=json&polygon_geojson=1&countrycodes=in&limit=1',
-        );
-        final response = await http.get(url, headers: {'User-Agent': 'ziko_app'});
+        if (rawQuery.contains('goo.gl') || rawQuery.contains('maps.app')) {
+          final req = http.Request('GET', Uri.parse(rawQuery))..followRedirects = false;
+          final client = http.Client();
+          final response = await client.send(req);
+          final redirectUrl = response.headers['location'];
+          if (redirectUrl != null && redirectUrl.isNotEmpty) {
+            rawQuery = redirectUrl;
+          }
+        }
+      } catch (e) {
+        debugPrint('URL redirect resolve error: $e');
+      }
 
-        if (response.statusCode == 200) {
-          final List data = json.decode(response.body);
-          if (data.isNotEmpty) {
-            final item = data[0];
+      final extractedPos = _extractCoordinatesFromGoogleMapsUrl(rawQuery);
+      if (extractedPos != null) {
+        fallbackCenter = extractedPos;
 
-            if (item['lat'] != null && item['lon'] != null) {
-              fallbackCenter = gm.LatLng(
-                double.parse(item['lat'].toString()),
-                double.parse(item['lon'].toString()),
-              );
-            }
-
-            if (item['geojson'] != null) {
-              final geojson = item['geojson'];
+        // Query OSM Reverse Geocoding with extracted coordinates to get boundary polygon
+        try {
+          final url = Uri.parse(
+            'https://nominatim.openstreetmap.org/reverse?lat=${extractedPos.latitude}&lon=${extractedPos.longitude}&format=json&polygon_geojson=1&zoom=14',
+          );
+          final response = await http.get(url, headers: {'User-Agent': 'ziko_app'});
+          if (response.statusCode == 200) {
+            final Map<String, dynamic> data = json.decode(response.body);
+            if (data['geojson'] != null) {
+              final geojson = data['geojson'];
               final String type = geojson['type'] ?? '';
               final List coordinates = geojson['coordinates'] ?? [];
 
@@ -141,18 +160,94 @@ class _AdminAreaDrawScreenState extends State<AdminAreaDrawScreen> {
                 }
               }
             }
-
-            if (fetchedPoints.isNotEmpty) {
-              break; // Polygon successfully found
-            }
           }
+        } catch (e) {
+          debugPrint('Reverse geocode error: $e');
         }
-      } catch (e) {
-        debugPrint('Fetch attempt error for $q: $e');
       }
     }
 
-    // Fallback: If no complex polygon returned, but we found village GPS center:
+    // STEP 1: Use Mappls Geocoding if not a link
+    if (fallbackCenter == null && fetchedPoints.isEmpty) {
+      try {
+        final mapplsRes = await mgl.MapplsGeoCoding(address: rawQuery).callGeocoding();
+        if (mapplsRes != null && mapplsRes.results != null && mapplsRes.results!.isNotEmpty) {
+          final top = mapplsRes.results!.first;
+          final lat = top.latitude;
+          final lng = top.longitude;
+          if (lat != null && lng != null) {
+            fallbackCenter = gm.LatLng(lat, lng);
+          }
+        }
+      } catch (e) {
+        debugPrint('Mappls Geocode search error: $e');
+      }
+    }
+
+    // STEP 2: Query OSM Search for boundary polygon if not a link
+    if (fetchedPoints.isEmpty) {
+      final queriesToTry = [
+        '$rawQuery, India',
+        '$rawQuery, West Bengal, India',
+        rawQuery,
+      ];
+
+      for (final q in queriesToTry) {
+        try {
+          final url = Uri.parse(
+            'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(q)}&format=json&polygon_geojson=1&countrycodes=in&limit=1',
+          );
+          final response = await http.get(url, headers: {'User-Agent': 'ziko_app'});
+
+          if (response.statusCode == 200) {
+            final List data = json.decode(response.body);
+            if (data.isNotEmpty) {
+              final item = data[0];
+
+              if (item['lat'] != null && item['lon'] != null) {
+                fallbackCenter = gm.LatLng(
+                  double.parse(item['lat'].toString()),
+                  double.parse(item['lon'].toString()),
+                );
+              }
+
+              if (item['geojson'] != null) {
+                final geojson = item['geojson'];
+                final String type = geojson['type'] ?? '';
+                final List coordinates = geojson['coordinates'] ?? [];
+
+                if (type == 'Polygon' && coordinates.isNotEmpty) {
+                  final ring = coordinates[0];
+                  for (var pt in ring) {
+                    if (pt is List && pt.length >= 2) {
+                      fetchedPoints.add(gm.LatLng((pt[1] as num).toDouble(), (pt[0] as num).toDouble()));
+                    }
+                  }
+                } else if (type == 'MultiPolygon' && coordinates.isNotEmpty) {
+                  final poly = coordinates[0];
+                  if (poly is List && poly.isNotEmpty) {
+                    final ring = poly[0];
+                    for (var pt in ring) {
+                      if (pt is List && pt.length >= 2) {
+                        fetchedPoints.add(gm.LatLng((pt[1] as num).toDouble(), (pt[0] as num).toDouble()));
+                      }
+                    }
+                  }
+                }
+              }
+
+              if (fetchedPoints.isNotEmpty) {
+                break;
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Fetch attempt error for $q: $e');
+        }
+      }
+    }
+
+    // Fallback: If no complex polygon returned, but we have GPS center:
     // Generate a smart 4-point initial boundary box around village center (~1.5km)
     if (fetchedPoints.isEmpty && fallbackCenter != null) {
       final lat = fallbackCenter.latitude;
@@ -179,7 +274,7 @@ class _AdminAreaDrawScreenState extends State<AdminAreaDrawScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('"$rawQuery" -এর ম্যাপ বাউন্ডারি সেটিং করা হয়েছে! (${fetchedPoints.length} পয়েন্ট) ✅'),
+            content: Text('ম্যাপ বাউন্ডারি সফলভাবে সেটিং করা হয়েছে! (${fetchedPoints.length} পয়েন্ট) ✅'),
             backgroundColor: Colors.green,
           ),
         );
@@ -187,8 +282,8 @@ class _AdminAreaDrawScreenState extends State<AdminAreaDrawScreen> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('"$rawQuery" এলাকাটি খুঁজে পাওয়া যায়নি। সঠিক বানান দিয়ে আবার চেষ্টা করুন।'),
+          const SnackBar(
+            content: Text('এলাকাটি খুঁজে পাওয়া যায়নি। Google Maps লিংক বা সঠিক নাম দিয়ে আবার চেষ্টা করুন।'),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -302,8 +397,8 @@ class _AdminAreaDrawScreenState extends State<AdminAreaDrawScreen> {
                     child: TextField(
                       controller: _searchCtrl,
                       decoration: InputDecoration(
-                        hintText: 'গ্রাম বা এলাকার নাম লিখুন (যেমন: Contai, Sabang)...',
-                        hintStyle: GoogleFonts.urbanist(fontSize: 12, color: Colors.grey),
+                        hintText: 'গ্রামের নাম বা Google Maps লিংক পেস্ট করুন...',
+                        hintStyle: GoogleFonts.urbanist(fontSize: 11, color: Colors.grey),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                       ),
@@ -341,7 +436,7 @@ class _AdminAreaDrawScreenState extends State<AdminAreaDrawScreen> {
               ),
               child: Text(
                 _points.isEmpty
-                    ? '💡 অটো-ফেচ করুন অথবা ম্যাপে পিন ট্যাপ করে সীমানা ড্র করুন'
+                    ? '💡 Google Maps লিংক পেস্ট করুন অথবা ম্যাপে পিন ট্যাপ করে ড্র করুন'
                     : 'বাউন্ডারি পয়েন্ট: ${_points.length} টি। প্রয়োজনে ট্যাপ করে যোগ/এডিট করুন।',
                 style: GoogleFonts.urbanist(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
