@@ -20,6 +20,7 @@ import '../../rider/providers/rider_provider.dart';
 import '../providers/order_provider.dart';
 import '../data/business_model.dart';
 import 'full_map_tracking_screen.dart';
+import 'customer_main_shell.dart';
 
 class OrderTrackingScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -235,14 +236,33 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
     return index == -1 ? 0 : index;
   }
 
+  void _handleBack(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const CustomerMainShell()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final orderAsync = ref.watch(singleOrderProvider(widget.orderId));
     final userAsync = ref.watch(currentUserProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFFDFB),
-      body: orderAsync.when(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleBack(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFFDFB),
+        body: orderAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (order) {
@@ -286,7 +306,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
                     child: Row(
                       children: [
                         GestureDetector(
-                          onTap: () => Navigator.pop(context),
+                          onTap: () => _handleBack(context),
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
@@ -331,6 +351,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen> {
         },
       ),
       bottomSheet: _buildBottomAction(orderAsync.value),
+    ),
     );
   }
 
