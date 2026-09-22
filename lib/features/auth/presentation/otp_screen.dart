@@ -118,9 +118,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('OTP যাচাই')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 20),
-          child: Column(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 20),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(

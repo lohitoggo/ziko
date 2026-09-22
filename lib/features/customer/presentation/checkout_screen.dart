@@ -12,6 +12,7 @@ import '../../auth/providers/area_provider.dart';
 import '../../auth/data/area_model.dart';
 import '../../admin/providers/admin_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/serviceability_helper.dart';
 import '../../../core/services/payment/payment_service.dart';
 import '../../../core/services/payment/bharatpe_service_impl.dart';
 import 'order_success_screen.dart';
@@ -339,10 +340,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                               const SizedBox(height: 40),
                             ]),
                           ),
-                          Container(
-                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                            decoration: BoxDecoration(color: cardColor, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isSalon ? 0.2 : 0.05), blurRadius: 20, offset: const Offset(0, -5))], borderRadius: const BorderRadius.vertical(top: Radius.circular(30))),
-                            child: Row(children: [
+                          SafeArea(
+                            top: false,
+                            child: Container(
+                              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                              decoration: BoxDecoration(color: cardColor, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isSalon ? 0.2 : 0.05), blurRadius: 20, offset: const Offset(0, -5))], borderRadius: const BorderRadius.vertical(top: Radius.circular(30))),
+                              child: Row(children: [
                               Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                                 Text('₹${total.toInt()}', style: GoogleFonts.urbanist(fontSize: 22, fontWeight: FontWeight.w900, color: textColor)),
                                 Text(isSalon ? 'BOOKING TOTAL' : 'GRAND TOTAL', style: GoogleFonts.urbanist(fontSize: 10, fontWeight: FontWeight.w800, color: primaryColor, letterSpacing: 0.5)),
@@ -353,6 +356,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                   if (!user.isPhoneVerified) { _showPhoneVerificationRequired(user.phone, isSalon, primaryColor); return; }
                                   if (!isSalon && _selectedAddress == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a delivery address first'))); return; }
                                   
+                                  if (_selectedAddress?.latitude != null && _selectedAddress?.longitude != null) {
+                                    final isServiceable = ServiceabilityHelper.isLocationServiceable(
+                                      userLat: _selectedAddress!.latitude,
+                                      userLon: _selectedAddress!.longitude,
+                                      activeAreas: allAreas,
+                                    );
+                                    if (!isServiceable) {
+                                      ServiceabilityHelper.showUnserviceableDialog(context);
+                                      return;
+                                    }
+                                  }
+
                                   if (_paymentMethod == 'wallet') {
                                     final walletBalance = ref.read(userWalletBalanceProvider(user.uid)).value ?? 0.0;
                                     if (walletBalance < total) {
@@ -433,6 +448,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                 child: _isPlacing ? const CircularProgressIndicator(color: Colors.white) : Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text(isSalon ? 'CONFIRM BOOKING' : 'PLACE ORDER', style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1)), const SizedBox(width: 10), const Icon(Icons.check_circle_outline_rounded, size: 20)]),
                               )),
                             ]),
+                          ),
                           ),
                         ],
                       ),

@@ -104,7 +104,7 @@ class WishlistScreen extends ConsumerWidget {
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 120),
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];

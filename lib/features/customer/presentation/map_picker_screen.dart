@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/serviceability_helper.dart';
+import '../../auth/providers/area_provider.dart';
 
-class MapPickerScreen extends StatefulWidget {
+class MapPickerScreen extends ConsumerStatefulWidget {
   final ll.LatLng initialLocation;
   const MapPickerScreen({super.key, required this.initialLocation});
 
   @override
-  State<MapPickerScreen> createState() => _MapPickerScreenState();
+  ConsumerState<MapPickerScreen> createState() => _MapPickerScreenState();
 }
 
-class _MapPickerScreenState extends State<MapPickerScreen> {
+class _MapPickerScreenState extends ConsumerState<MapPickerScreen> {
   late ll.LatLng _pickedLocation;
   gm.GoogleMapController? _mapController;
   final TextEditingController _searchCtrl = TextEditingController();
@@ -172,7 +175,21 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () => Navigator.pop(context, _pickedLocation),
+                          onPressed: () {
+                            final activeAreas = ref.read(activeAreasProvider).value ?? [];
+                            final isServiceable = ServiceabilityHelper.isLocationServiceable(
+                              userLat: _pickedLocation.latitude,
+                              userLon: _pickedLocation.longitude,
+                              activeAreas: activeAreas,
+                            );
+
+                            if (!isServiceable) {
+                              ServiceabilityHelper.showUnserviceableDialog(context);
+                              return;
+                            }
+
+                            Navigator.pop(context, _pickedLocation);
+                          },
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             backgroundColor: AppColors.primary,

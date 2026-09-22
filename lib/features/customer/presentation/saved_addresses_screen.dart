@@ -7,6 +7,7 @@ import '../../auth/providers/supabase_auth_provider.dart';
 import '../../auth/data/area_model.dart';
 import '../../auth/providers/area_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/serviceability_helper.dart';
 
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -70,6 +71,29 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
         builder: (ctx, setLocalState) {
           final areasAsync = ref.watch(activeAreasProvider);
           
+          Future<void> autoDetectArea(double latitude, double longitude) async {
+            final areas = ref.read(activeAreasProvider).value ?? [];
+            final matchingArea = ServiceabilityHelper.getMatchingAreaForLocation(
+              userLat: latitude,
+              userLon: longitude,
+              activeAreas: areas,
+            );
+
+            if (matchingArea != null) {
+              setLocalState(() {
+                selectedAreaId = matchingArea.id;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('অটোমেটিক এলাকা সনাক্ত করা হয়েছে: ${matchingArea.name} ✅'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } else if (areas.any((a) => a.polygonPoints.length >= 3)) {
+              ServiceabilityHelper.showUnserviceableDialog(context);
+            }
+          }
+
           Future<void> fetchGPS() async {
             setLocalState(() => isFetchingGPS = true);
             try {
@@ -78,6 +102,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
               if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
                 final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
                 setLocalState(() { lat = pos.latitude; lon = pos.longitude; });
+                await autoDetectArea(pos.latitude, pos.longitude);
               }
             } catch (e) {
               debugPrint('GPS Error: $e');
@@ -148,6 +173,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                                     final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => MapPickerScreen(initialLocation: LatLng(lat!, lon!))));
                                     if (result != null && result is LatLng) {
                                       setLocalState(() { lat = result.latitude; lon = result.longitude; });
+                                      await autoDetectArea(result.latitude, result.longitude);
                                     }
                                   },
                                   icon: const Icon(Icons.map, size: 16),
@@ -209,6 +235,21 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('সবগুলো তথ্য এবং লোকেশন পিন নিশ্চিত করুন')));
                           return;
                         }
+
+                        final activeAreas = ref.read(activeAreasProvider).value ?? [];
+                        if (lat != null && lon != null) {
+                          final isServiceable = ServiceabilityHelper.isLocationServiceable(
+                            userLat: lat,
+                            userLon: lon,
+                            activeAreas: activeAreas,
+                          );
+
+                          if (!isServiceable) {
+                            ServiceabilityHelper.showUnserviceableDialog(context);
+                            return;
+                          }
+                        }
+
                         final user = ref.read(supabaseUserProvider);
                         if (user == null) return;
 

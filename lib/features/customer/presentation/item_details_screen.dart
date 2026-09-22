@@ -274,9 +274,11 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
           // 4. Sticky Bottom Bar
           Positioned(
             bottom: 0, left: 0, right: 0,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-              decoration: BoxDecoration(
+            child: SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                decoration: BoxDecoration(
                 color: isSalon ? const Color(0xFF1E1E1E) : Colors.white,
                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))],
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
@@ -328,6 +330,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                   ),
                 ],
               ),
+            ),
             ),
           ),
         ],

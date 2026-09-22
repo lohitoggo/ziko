@@ -107,7 +107,7 @@ class CategoryShopsScreen extends ConsumerWidget {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+                  padding: EdgeInsets.only(top: 10, bottom: MediaQuery.of(context).padding.bottom + 20),
                   itemCount: shops.length,
                   itemBuilder: (context, index) {
                     return BusinessCard(business: shops[index]);

@@ -367,7 +367,7 @@ class CustomerHomeScreen extends ConsumerWidget {
 
                           const SizedBox(height: 50),
                           _buildFooter(textColor),
-                          const SizedBox(height: 80),
+                          const SizedBox(height: 120),
                         ],
                       );
                     },

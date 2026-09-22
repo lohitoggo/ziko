@@ -411,9 +411,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Widget _buildCheckoutBar(BuildContext context, double totalAmount, bool isSalon, String? selectedSlot, Color primary, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      decoration: BoxDecoration(
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+        decoration: BoxDecoration(
         color: isSalon ? const Color(0xFF1E1E1E) : Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isSalon ? 0.2 : 0.05), blurRadius: 20, offset: const Offset(0, -5))],
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
@@ -442,6 +444,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

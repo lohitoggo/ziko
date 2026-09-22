@@ -14,6 +14,7 @@ class AdminRepository {
     required double deliveryCharge,
     required double minimumOrder,
     required int estimatedDeliveryMinutes,
+    List<Map<String, double>>? boundaryPolygon,
   }) async {
     try {
       await _supabase.from('areas').insert({
@@ -22,6 +23,7 @@ class AdminRepository {
         'min_order_amount': minimumOrder,
         'estimated_delivery_minutes': estimatedDeliveryMinutes,
         'is_active': true,
+        if (boundaryPolygon != null) 'boundary_polygon': boundaryPolygon,
       });
     } catch (e) {
       print('Add area error: $e');
@@ -35,12 +37,16 @@ class AdminRepository {
 
   Future<void> updateAreaDetails(String areaId, Map<String, dynamic> data) async {
     try {
-      await _supabase.from('areas').update({
+      final Map<String, dynamic> updateData = {
         'name': data['name'],
         'delivery_charge': data['deliveryCharge'],
         'min_order_amount': data['minimumOrder'],
         'estimated_delivery_minutes': data['estimatedDeliveryMinutes'],
-      }).eq('id', areaId);
+      };
+      if (data.containsKey('boundaryPolygon')) {
+        updateData['boundary_polygon'] = data['boundaryPolygon'];
+      }
+      await _supabase.from('areas').update(updateData).eq('id', areaId);
     } catch (e) {
       print('Update area error: $e');
       rethrow;

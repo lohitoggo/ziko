@@ -173,7 +173,7 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
                   itemCount: filteredOrders.length + 1, // +1 for Bottom Spacing
                   itemBuilder: (context, index) {
                     if (index == filteredOrders.length) {
-                      return const SizedBox(height: 100); // 4. Bottom space for navigation bar
+                      return const SizedBox(height: 120); // 4. Bottom space for navigation bar
                     }
                     return _OrderCardRestored(
                       order: filteredOrders[index],
