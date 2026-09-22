@@ -33,18 +33,21 @@ class NotificationsScreen extends ConsumerWidget {
   }
 
   bool _isUpdateAvailable(String? latestVersion) {
-    if (latestVersion == null || latestVersion.isEmpty) return false;
-    // Compare versions (e.g. '1.0.2' vs '1.0.1')
+    if (latestVersion == null || latestVersion.trim().isEmpty) return false;
+    final trimmedLatest = latestVersion.trim();
+    if (trimmedLatest == currentAppVersion) return false;
+
     try {
-      final currentParts = currentAppVersion.split('.').map(int.parse).toList();
-      final latestParts = latestVersion.split('.').map(int.parse).toList();
+      final currentParts = currentAppVersion.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final latestParts = trimmedLatest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+
       for (int i = 0; i < currentParts.length && i < latestParts.length; i++) {
         if (latestParts[i] > currentParts[i]) return true;
         if (latestParts[i] < currentParts[i]) return false;
       }
       return latestParts.length > currentParts.length;
     } catch (e) {
-      return latestVersion != currentAppVersion;
+      return false;
     }
   }
 
@@ -69,16 +72,16 @@ class NotificationsScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (e, _) => Center(child: Text('Error loading notifications: $e')),
         data: (settings) {
-          final latestVersion = settings?['latest_app_version'] ?? settings?['latestAppVersion'] ?? '1.0.2';
+          final latestVersion = settings?['latest_app_version'] ?? settings?['latestAppVersion'] ?? currentAppVersion;
           final updateUrl = settings?['app_update_url'] ?? settings?['updateUrl'] ?? 'https://zikoapp.online';
           final updateNotes = settings?['app_update_notes'] ?? 'A new version with performance improvements and new features is available.';
-          final announcement = settings?['announcement'] as String?;
           final hasUpdate = _isUpdateAvailable(latestVersion);
 
           return ListView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(20),
             children: [
-              // 1. APP UPDATE NOTIFICATION CARD
+              // 1. APP UPDATE NOTIFICATION CARD (Only shown if a newer version is available)
               if (hasUpdate) ...[
                 Container(
                   padding: const EdgeInsets.all(20),
@@ -192,66 +195,7 @@ class NotificationsScreen extends ConsumerWidget {
                 ),
               ],
 
-              // 2. SYSTEM ANNOUNCEMENT CARD
-              if (announcement != null && announcement.trim().isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(Icons.campaign_rounded, color: AppColors.primary, size: 24),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Special Announcement 📢',
-                              style: GoogleFonts.urbanist(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                                color: AppColors.charcoal,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              announcement,
-                              style: GoogleFonts.urbanist(
-                                fontSize: 13,
-                                color: AppColors.muted,
-                                fontWeight: FontWeight.w500,
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              // 3. LIVE ORDERS / APPOINTMENT NOTIFICATIONS
+              // 2. LIVE ORDERS / APPOINTMENT NOTIFICATIONS
               Text(
                 'Recent Updates & Alerts',
                 style: GoogleFonts.urbanist(
@@ -267,7 +211,7 @@ class NotificationsScreen extends ConsumerWidget {
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Text('Error loading orders: $e'),
                 data: (orders) {
-                  if (orders.isEmpty && !hasUpdate && (announcement == null || announcement.trim().isEmpty)) {
+                  if (orders.isEmpty && !hasUpdate) {
                     return Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 40),
