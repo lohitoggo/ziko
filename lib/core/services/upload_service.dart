@@ -3,15 +3,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 
 class UploadService {
   final SupabaseClient _supabase = Supabase.instance.client;
+  static const _uuid = Uuid();
 
   /// Compresses the image to stay below [targetKb] and returns the compressed file.
   Future<File?> _compressImage(File file, {int targetKb = 200}) async {
     try {
       final tempDir = await getTemporaryDirectory();
-      final targetPath = path.join(tempDir.path, '${DateTime.now().millisecondsSinceEpoch}_compressed.jpg');
+      final uniqueName = '${DateTime.now().millisecondsSinceEpoch}_${_uuid.v4()}_compressed.jpg';
+      final targetPath = path.join(tempDir.path, uniqueName);
       
       int quality = 85;
       File? compressedFile;
@@ -44,19 +47,20 @@ class UploadService {
     }
   }
 
-  /// Uploads an image to Supabase Storage with automatic compression.
+  /// Uploads an image to Supabase Storage with automatic compression and unique naming.
   Future<String?> uploadImage(File file, String bucket) async {
     try {
       // Compress before upload (Target 200KB)
       final compressedFile = await _compressImage(file);
       final fileToUpload = compressedFile ?? file;
 
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}${path.extension(fileToUpload.path)}';
+      final extension = path.extension(fileToUpload.path).isEmpty ? '.jpg' : path.extension(fileToUpload.path);
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_uuid.v4()}$extension';
       
       final response = await _supabase.storage.from(bucket).upload(
         fileName,
         fileToUpload,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
       );
 
       if (response.isEmpty) {
