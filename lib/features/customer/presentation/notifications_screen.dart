@@ -9,7 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import 'order_tracking_screen.dart';
 
 class NotificationsScreen extends ConsumerWidget {
-  static const String currentAppVersion = '1.0.1';
+  static const String currentAppVersion = '1.0.2';
 
   const NotificationsScreen({super.key});
 
