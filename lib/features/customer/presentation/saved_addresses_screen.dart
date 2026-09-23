@@ -265,6 +265,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                           longitude: lon,
                           isDefault: existing?.isDefault ?? false,
                         ));
+                        ref.invalidate(userAddressesProvider);
                         if (ctx.mounted) Navigator.pop(ctx);
                       },
                       child: Text(existing == null ? 'ঠিকানা সেভ করুন' : 'আপডেট করুন'),
@@ -345,18 +346,57 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
             ),
             subtitle: Text('${a.houseNumber}, ${a.landmark}\nPin: ${a.pinCode}', style: const TextStyle(fontSize: 12)),
             trailing: PopupMenuButton<String>(
-              onSelected: (v) {
+              onSelected: (v) async {
                 if (v == 'delete') _confirmDelete(context, ref, a.id);
                 if (v == 'edit') _showAddAddressSheet(context, existing: a);
+                if (v == 'set_default') {
+                  await ref.read(addressRepositoryProvider).setDefault(a.userId, a.id);
+                  ref.invalidate(userAddressesProvider);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('প্রাথমিক ঠিকানা হিসেবে সেট করা হয়েছে ✅'), backgroundColor: Colors.green),
+                    );
+                  }
+                }
               },
               itemBuilder: (ctx) => [
-                const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: Colors.red))),
+                if (!a.isDefault)
+                  const PopupMenuItem(
+                    value: 'set_default',
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 18),
+                        SizedBox(width: 8),
+                        Text('Set as Default'),
+                      ],
+                    ),
+                  ),
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_outlined, color: Colors.blue, size: 18),
+                      SizedBox(width: 8),
+                      Text('Edit'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline_rounded, color: Colors.red, size: 18),
+                      SizedBox(width: 8),
+                      Text('Delete', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
               ],
             ),
-            onTap: () {
+            onTap: () async {
               if (!a.isDefault) {
-                ref.read(addressRepositoryProvider).setDefault(a.userId, a.id);
+                await ref.read(addressRepositoryProvider).setDefault(a.userId, a.id);
+                ref.invalidate(userAddressesProvider);
               }
             },
           ),
@@ -369,16 +409,23 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete Address'),
         content: const Text('Are you sure you want to remove this address?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(
-            onPressed: () {
-              ref.read(addressRepositoryProvider).deleteAddress(id);
-              Navigator.pop(ctx);
+            onPressed: () async {
+              await ref.read(addressRepositoryProvider).deleteAddress(id);
+              ref.invalidate(userAddressesProvider);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('ঠিকানাটি মুছে ফেলা হয়েছে')),
+                );
+              }
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
